@@ -32,7 +32,7 @@ final class Deck {
         return entries.filter { ids.contains($0.printingID) }.reduce(0) { $0 + $1.count }
     }
 
-    /// 調整某刷版張數；歸零自動移除 entry（§4.4.2）
+    /// 調整某刷版張數；歸零自動移除 entry（§4.4.2）。每次變更立即存檔。
     func adjust(printingID: String, by delta: Int, context: ModelContext) {
         updatedAt = .now
         if let entry = entry(forPrinting: printingID) {
@@ -45,6 +45,7 @@ final class Deck {
             let entry = DeckEntry(printingID: printingID, count: delta)
             entries.append(entry)
         }
+        try? context.save()
     }
 
     /// 轉換刷版：把 1 張 from 換成 to（§4.4.2 長按選單）

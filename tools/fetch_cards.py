@@ -97,6 +97,15 @@ def parse_int(raw):
     return int(s) if s.lstrip("-").isdigit() and s != "-" else None
 
 
+def parse_soul(raw):
+    """魂傷欄位是圖示標記：'[[soul.gif]]'=1、兩個=2；事件/CX 為 '-'。"""
+    s = str(raw or "").strip()
+    count = s.count("[[soul.gif]]")
+    if count:
+        return count
+    return parse_int(s)
+
+
 ICON_LABEL = {  # 能力文字內嵌圖標 → 文字標記（翻譯前先固定化）
     "soul": "【魂】", "gate": "【門】", "treasure": "【寶】",
     "salvage": "【扉】", "draw": "【本】", "pool": "【金】",
@@ -151,7 +160,7 @@ def group_cards(items, source_rule):
                 "level": parse_int(it.get("level")),
                 "cost": parse_int(it.get("cost")),
                 "power": parse_int(it.get("power")),
-                "soul": parse_int(it.get("soul")),
+                "soul": parse_soul(it.get("soul")),
                 "trigger": parse_trigger(it.get("card_trigger") or ""),
                 "traits_jp": [t.strip() for t in traits],
                 "text_jp": text,

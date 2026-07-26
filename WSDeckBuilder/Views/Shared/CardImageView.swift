@@ -91,7 +91,7 @@ struct CardImageView: View {
     }
 
     private func load() async {
-        if case .loaded = state { return }
+        // 不可因已載入而跳過：切換刷版時 printing.id 改變，必須重新載入
         state = .loading
         switch await ImageCache.shared.image(for: printing) {
         case .image(let image): state = .loaded(image)

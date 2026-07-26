@@ -10,6 +10,8 @@ struct DeckListView: View {
 
     @State private var renamingDeck: Deck?
     @State private var newName = ""
+    @State private var showCreateAlert = false
+    @State private var createName = ""
 
     var body: some View {
         NavigationStack {
@@ -41,10 +43,18 @@ struct DeckListView: View {
             }
             .toolbar {
                 Button {
-                    addDeck()
+                    createName = "新牌組 \(decks.count + 1)"
+                    showCreateAlert = true
                 } label: {
                     Image(systemName: "plus")
                 }
+            }
+            .alert("新增牌組", isPresented: $showCreateAlert) {
+                TextField("牌組名稱", text: $createName)
+                Button("取消", role: .cancel) {}
+                Button("建立") { addDeck(named: createName) }
+            } message: {
+                Text("建立後到「圖鑑」分頁選擇此牌組即可加卡，所有變更都會自動儲存")
             }
             .overlay {
                 if decks.isEmpty {
@@ -62,6 +72,7 @@ struct DeckListView: View {
                     if let deck = renamingDeck, !newName.isEmpty {
                         deck.name = newName
                         deck.updatedAt = .now
+                        try? context.save()
                     }
                 }
             }
@@ -98,14 +109,17 @@ struct DeckListView: View {
         }
     }
 
-    private func addDeck() {
-        let deck = Deck(name: "新牌組 \(decks.count + 1)")
+    private func addDeck(named name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        let deck = Deck(name: trimmed.isEmpty ? "新牌組 \(decks.count + 1)" : trimmed)
         context.insert(deck)
+        try? context.save()
         activeDeckUUID = deck.uuid.uuidString
     }
 
     private func delete(_ deck: Deck) {
         if deck.uuid.uuidString == activeDeckUUID { activeDeckUUID = "" }
         context.delete(deck)
+        try? context.save()
     }
 }

@@ -10,6 +10,7 @@ struct DeckDetailView: View {
 
     @State private var mode: Mode = .grid
     @State private var detailCard: Card?
+    @State private var isEditing = false
 
     private enum Mode: String, CaseIterable {
         case grid = "圖片"
@@ -47,12 +48,18 @@ struct DeckDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) { exportMenu }
             ToolbarItem(placement: .confirmationAction) {
-                Button("完成") {
-                    deck.updatedAt = .now
-                    try? context.save()
-                    dismiss()
+                if isEditing {
+                    Button("完成") {
+                        deck.updatedAt = .now
+                        try? context.save()
+                        withAnimation { isEditing = false }
+                    }
+                    .fontWeight(.bold)
+                } else {
+                    Button("編輯") {
+                        withAnimation { isEditing = true }
+                    }
                 }
-                .fontWeight(.bold)
             }
         }
         .sheet(item: $detailCard) { card in
@@ -92,7 +99,8 @@ struct DeckDetailView: View {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)],
                                   spacing: 12) {
                             ForEach(section.items, id: \.card.id) { item in
-                                CardGridItemView(card: item.card, deck: deck) {
+                                CardGridItemView(card: item.card, deck: deck,
+                                                 editable: isEditing) {
                                     detailCard = item.card
                                 }
                             }
@@ -130,7 +138,8 @@ struct DeckDetailView: View {
                             deck: deck,
                             card: item.card,
                             totalForName: DeckValidator.nameCount(of: item.card,
-                                                                  in: countedItems)) {
+                                                                  in: countedItems),
+                            editable: isEditing) {
                             detailCard = item.card
                         }
                     }

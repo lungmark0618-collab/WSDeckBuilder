@@ -5,6 +5,8 @@ import SwiftUI
 struct CardGridItemView: View {
     let card: Card
     var deck: Deck?
+    /// false = 純瀏覽（隱藏＋/－，徽章照顯示）
+    var editable = true
     var onTap: () -> Void
 
     @Environment(\.modelContext) private var context
@@ -35,7 +37,7 @@ struct CardGridItemView: View {
                 .font(.caption2)
                 .lineLimit(1)
 
-            if let deck {
+            if let deck, editable {
                 CountStepper(count: countInDeck) { delta in
                     // ＋預設加入普卡刷版；－從最後一個有牌的刷版扣（§4.4.2）
                     if delta > 0 {

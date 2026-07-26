@@ -25,6 +25,9 @@ struct CardRowView: View {
                                 .font(.caption2.monospaced())
                             Text(summary)
                                 .font(.caption2)
+                            if let trigger = card.trigger {
+                                TriggerIconView(trigger: trigger, size: 13)
+                            }
                         }
                         .foregroundStyle(.secondary)
                     }
@@ -57,7 +60,7 @@ struct CardRowView: View {
         case .event:
             "事件 Lv\(card.level ?? 0)/費\(card.cost ?? 0)"
         case .climax:
-            "CX" + (card.trigger.map { "・\($0.label)" } ?? "")
+            "CX"
         }
     }
 

@@ -19,7 +19,7 @@ struct FilterSheet: View {
                     toggleRow(items: CardType.allCases, set: $query.types) { $0.label }
                 }
                 Section("判定標誌") {
-                    toggleRow(items: TriggerIcon.allCases, set: $query.triggers) { $0.label }
+                    triggerToggleRow
                 }
                 Section("特徵") {
                     toggleRow(items: database.allTraits, set: $query.traits) { "《\($0)》" }
@@ -50,6 +50,33 @@ struct FilterSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    /// 判定標誌 chips：顯示官方卡面圖示
+    private var triggerToggleRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(TriggerIcon.allCases) { trigger in
+                    let isOn = query.triggers.contains(trigger)
+                    Button {
+                        if isOn {
+                            query.triggers.remove(trigger)
+                        } else {
+                            query.triggers.insert(trigger)
+                        }
+                    } label: {
+                        TriggerIconView(trigger: trigger, size: 20)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(isOn ? Color.accentColor : Color(.tertiarySystemFill),
+                                        in: Capsule())
+                            .foregroundStyle(isOn ? .white : .primary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 2)
+        }
     }
 
     /// 橫向 chip 多選列

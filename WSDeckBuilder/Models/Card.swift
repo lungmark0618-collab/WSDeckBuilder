@@ -103,6 +103,20 @@ enum TriggerIcon: String, Codable, CaseIterable, Identifiable {
         case .choice: "箭頭"
         }
     }
+    /// 官方卡面圖示（Assets 內，抓自官網 _partimages）；nil 表示無圖示退回文字
+    var iconName: String? {
+        switch self {
+        case .soul, .soul2: "trigger_soul"
+        case .gate: "trigger_gate"
+        case .treasure: "trigger_treasure"
+        case .comeback: "trigger_salvage"
+        case .draw: "trigger_draw"
+        case .pool: nil
+        case .shot: "trigger_shot"
+        case .standby: "trigger_standby"
+        case .choice: "trigger_focus"
+        }
+    }
 }
 
 enum TranslationStatus: String, Codable {

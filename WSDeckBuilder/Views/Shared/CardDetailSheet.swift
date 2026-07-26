@@ -87,7 +87,16 @@ struct CardDetailSheet: View {
             stat("費用", card.cost.map(String.init) ?? "-")
             stat("攻擊力", card.power.map(String.init) ?? "-")
             stat("魂傷", card.soul.map(String.init) ?? "-")
-            stat("判定", card.trigger?.label ?? "-")
+            VStack(spacing: 2) {
+                Text("判定").font(.caption2).foregroundStyle(.secondary)
+                if let trigger = card.trigger {
+                    TriggerIconView(trigger: trigger)
+                        .frame(height: 20)
+                } else {
+                    Text("-").font(.callout.monospacedDigit().bold())
+                }
+            }
+            .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
@@ -106,7 +115,7 @@ struct CardDetailSheet: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title).font(.caption).foregroundStyle(.secondary)
             ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
-                Text(line)
+                CardTextRenderer.render(line)
                     .font(.callout)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }

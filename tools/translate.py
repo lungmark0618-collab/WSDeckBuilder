@@ -124,6 +124,8 @@ def main():
     ap.add_argument("--out", default=os.path.join(HERE, "brd_cards.json"))
     ap.add_argument("--api", action="store_true",
                     help="未提供譯文的卡片改走 Claude API 批次翻譯")
+    ap.add_argument("--mark-reviewed", action="store_true",
+                    help="人工校對完成後執行：translation_status 全部改為 reviewed")
     args = ap.parse_args()
 
     raw = load_json(args.raw)
@@ -138,6 +140,15 @@ def main():
             print(f"警告：譯文 key {cid} 不存在於 raw", file=sys.stderr)
             continue
         text_map[card["text_jp"]] = zh
+
+    # 校對頁匯出的結果（review.html →「匯出校對結果」→ 放到 tools/）
+    review_path = os.path.join(HERE, "review_result.json")
+    review = load_json(review_path) if os.path.exists(review_path) else {}
+    # 打 ✓ 的卡以（卡名, 文字）為單位擴散到重複收錄
+    approved_pairs = set()
+    for c in raw["cards"]:
+        if review.get(c["id"], {}).get("status") == "ok":
+            approved_pairs.add((c["name_jp"], c["text_jp"]))
 
     missing = []
     cards_out = []
@@ -154,7 +165,9 @@ def main():
         card["text_zh"] = text_zh or ""
         card["text_lines_jp"] = [l for l in c["text_jp"].split("\n") if l.strip()]
         card["text_lines_zh"] = [l for l in card["text_zh"].split("\n") if l.strip()]
-        card["translation_status"] = "machine"
+        approved = (c["name_jp"], c["text_jp"]) in approved_pairs
+        card["translation_status"] = ("reviewed"
+                                      if args.mark_reviewed or approved else "machine")
         cards_out.append(card)
 
     if missing and args.api:

@@ -6,6 +6,7 @@ struct DeckDetailView: View {
     @Bindable var deck: Deck
     @Environment(CardDatabase.self) private var database
     @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
 
     @State private var mode: Mode = .list
     @State private var detailCard: Card?
@@ -41,7 +42,17 @@ struct DeckDetailView: View {
         }
         .navigationTitle(deck.name)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { exportMenu }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { exportMenu }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("完成") {
+                    deck.updatedAt = .now
+                    try? context.save()
+                    dismiss()
+                }
+                .fontWeight(.bold)
+            }
+        }
         .sheet(item: $detailCard) { card in
             CardDetailSheet(card: card, deck: deck)
         }

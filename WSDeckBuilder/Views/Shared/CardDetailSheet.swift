@@ -18,8 +18,9 @@ struct CardDetailSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    CardImageView(printing: selectedPrinting, cardName: card.nameZH)
-                        .frame(maxWidth: 280)
+                    CardImageView(printing: selectedPrinting, cardName: card.nameZH,
+                                  landscape: card.cardType == .climax)
+                        .frame(maxWidth: card.cardType == .climax ? 360 : 280)
                         .frame(maxWidth: .infinity)
 
                     if card.printings.count > 1 {

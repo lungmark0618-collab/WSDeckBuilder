@@ -14,7 +14,8 @@ struct CardGridItemView: View {
     var body: some View {
         VStack(spacing: 4) {
             Button(action: onTap) {
-                CardImageView(printing: card.defaultPrinting, cardName: card.nameZH)
+                CardImageView(printing: card.defaultPrinting, cardName: card.nameZH,
+                              landscape: card.cardType == .climax)
                     .overlay(alignment: .topTrailing) {
                         if countInDeck > 0 {
                             Text("\(countInDeck)")

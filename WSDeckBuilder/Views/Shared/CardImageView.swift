@@ -4,6 +4,8 @@ import SwiftUI
 struct CardImageView: View {
     let printing: Printing
     let cardName: String
+    /// CX 卡為橫式卡面，用橫置比例顯示
+    var landscape = false
 
     private enum LoadState {
         case loading
@@ -16,7 +18,8 @@ struct CardImageView: View {
 
     var body: some View {
         content
-            .aspectRatio(400.0 / 559.0, contentMode: .fit)  // WS 卡片比例
+            .aspectRatio(landscape ? 559.0 / 400.0 : 400.0 / 559.0,
+                         contentMode: .fit)  // WS 卡片比例
             .clipShape(RoundedRectangle(cornerRadius: 6))
             // 捲出畫面自動取消未完成的下載
             .task(id: printing.id) { await load() }

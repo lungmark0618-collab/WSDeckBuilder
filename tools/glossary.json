@@ -61,14 +61,14 @@
   "triggers": {
     "soul":    { "jp": "ソウル",       "zh": "魂傷",   "label": "魂" },
     "soul2":   { "jp": "ダブルソウル", "zh": "雙魂傷", "label": "雙魂" },
-    "gate":    { "jp": "ゲート",       "zh": "門",     "label": "門" },
+    "gate":    { "jp": "ゲート",       "zh": "城門",   "label": "城門" },
     "treasure":{ "jp": "トレジャー",   "zh": "寶",     "label": "寶" },
-    "comeback":{ "jp": "カムバック",   "zh": "扉",     "label": "扉" },
+    "comeback":{ "jp": "カムバック",   "zh": "木門",   "label": "木門" },
     "draw":    { "jp": "ドロー",       "zh": "本",     "label": "本" },
     "pool":    { "jp": "プール",       "zh": "金",     "label": "金" },
     "shot":    { "jp": "ショット",     "zh": "槍",     "label": "槍" },
-    "standby": { "jp": "スタンバイ",   "zh": "待",     "label": "待" },
-    "choice":  { "jp": "チョイス",     "zh": "選",     "label": "選" }
+    "standby": { "jp": "スタンバイ",   "zh": "開機",   "label": "開機" },
+    "choice":  { "jp": "チョイス",     "zh": "箭頭",   "label": "箭頭" }
   },
   "common": {
     "あなたの": "你的",

@@ -93,14 +93,14 @@ enum TriggerIcon: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .soul: "魂"
         case .soul2: "雙魂"
-        case .gate: "門"
+        case .gate: "城門"
         case .treasure: "寶"
-        case .comeback: "扉"
+        case .comeback: "木門"
         case .draw: "本"
         case .pool: "金"
         case .shot: "槍"
-        case .standby: "待"
-        case .choice: "選"
+        case .standby: "開機"
+        case .choice: "箭頭"
         }
     }
 }

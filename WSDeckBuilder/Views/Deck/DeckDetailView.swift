@@ -8,11 +8,12 @@ struct DeckDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
-    @State private var mode: Mode = .list
+    @State private var mode: Mode = .grid
     @State private var detailCard: Card?
 
     private enum Mode: String, CaseIterable {
-        case list = "卡表"
+        case grid = "圖片"
+        case list = "清單"
         case stats = "統計"
     }
 
@@ -36,6 +37,7 @@ struct DeckDetailView: View {
             .padding(.vertical, 6)
 
             switch mode {
+            case .grid: cardGrid
             case .list: cardList
             case .stats: DeckStatsView(items: countedItems)
             }
@@ -78,6 +80,43 @@ struct DeckDetailView: View {
         .padding(.horizontal)
         .padding(.vertical, 6)
         .background(.bar)
+    }
+
+    // MARK: - 圖片網格（依等級分區，含張數徽章與快速增減）
+
+    private var cardGrid: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 8, pinnedViews: [.sectionHeaders]) {
+                ForEach(sections, id: \.title) { section in
+                    Section {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)],
+                                  spacing: 12) {
+                            ForEach(section.items, id: \.card.id) { item in
+                                CardGridItemView(card: item.card, deck: deck) {
+                                    detailCard = item.card
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+                    } header: {
+                        Text("\(section.title) (\(section.count))")
+                            .font(.subheadline.bold())
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal)
+                            .padding(.vertical, 4)
+                            .background(.bar)
+                    }
+                }
+            }
+            .padding(.bottom, 8)
+        }
+        .overlay {
+            if deck.entries.isEmpty {
+                ContentUnavailableView("牌組是空的",
+                                       systemImage: "rectangle.stack.badge.plus",
+                                       description: Text("到「圖鑑」分頁選擇此牌組後按＋加卡"))
+            }
+        }
     }
 
     // MARK: - 卡表

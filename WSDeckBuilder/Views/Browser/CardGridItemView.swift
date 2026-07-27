@@ -5,27 +5,41 @@ import SwiftUI
 struct CardGridItemView: View {
     let card: Card
     var deck: Deck?
+    /// 指定刷版：顯示該刷版的卡圖與張數（牌組畫面依刷版分格用）；
+    /// nil = 顯示普卡圖與跨刷版總張數（圖鑑用）
+    var printing: Printing? = nil
     /// false = 純瀏覽（隱藏＋/－，徽章照顯示）
     var editable = true
     var onTap: () -> Void
 
     @Environment(\.modelContext) private var context
 
-    private var countInDeck: Int { deck?.count(of: card) ?? 0 }
+    private var displayPrinting: Printing { printing ?? card.defaultPrinting }
+
+    private var badgeCount: Int {
+        if let printing, let deck {
+            return deck.entry(forPrinting: printing.id)?.count ?? 0
+        }
+        return deck?.count(of: card) ?? 0
+    }
+
+    /// 超量標紅一律看同卡跨刷版總數
+    private var isOverLimit: Bool {
+        (deck?.count(of: card) ?? 0) > DeckValidator.nameLimit
+    }
 
     var body: some View {
         VStack(spacing: 4) {
             Button(action: onTap) {
-                CardImageView(printing: card.defaultPrinting, cardName: card.nameZH,
+                CardImageView(printing: displayPrinting, cardName: card.nameZH,
                               landscape: card.cardType == .climax)
                     .overlay(alignment: .topTrailing) {
-                        if countInDeck > 0 {
-                            Text("\(countInDeck)")
+                        if badgeCount > 0 {
+                            Text("\(badgeCount)")
                                 .font(.caption.bold())
                                 .foregroundStyle(.white)
                                 .frame(width: 22, height: 22)
-                                .background(countInDeck > DeckValidator.nameLimit
-                                            ? Color.red : Color.accentColor,
+                                .background(isOverLimit ? Color.red : Color.accentColor,
                                             in: Circle())
                                 .offset(x: 6, y: -6)
                         }
@@ -33,14 +47,18 @@ struct CardGridItemView: View {
             }
             .buttonStyle(.plain)
 
-            Text(card.nameZH)
+            Text(printing == nil ? card.nameZH
+                 : "\(displayPrinting.rarity)  \(card.nameZH)")
                 .font(.caption2)
                 .lineLimit(1)
 
             if let deck, editable {
-                CountStepper(count: countInDeck) { delta in
-                    // ＋預設加入普卡刷版；－從最後一個有牌的刷版扣（§4.4.2）
-                    if delta > 0 {
+                CountStepper(count: badgeCount) { delta in
+                    if let printing {
+                        // 指定刷版：直接增減該刷版
+                        deck.adjust(printingID: printing.id, by: delta, context: context)
+                    } else if delta > 0 {
+                        // ＋預設加入普卡刷版；－從最後一個有牌的刷版扣（§4.4.2）
                         deck.adjust(printingID: card.defaultPrinting.id, by: 1, context: context)
                     } else {
                         removeOne(from: deck)

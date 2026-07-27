@@ -98,10 +98,12 @@ struct DeckDetailView: View {
                     Section {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)],
                                   spacing: 12) {
-                            ForEach(section.items, id: \.card.id) { item in
-                                CardGridItemView(card: item.card, deck: deck,
+                            // 依刷版分格：1 SR + 3 R 就顯示 SR 與 R 各一格
+                            ForEach(printingTiles(for: section), id: \.printing.id) { tile in
+                                CardGridItemView(card: tile.card, deck: deck,
+                                                 printing: tile.printing,
                                                  editable: isEditing) {
-                                    detailCard = item.card
+                                    detailCard = tile.card
                                 }
                             }
                         }
@@ -160,6 +162,22 @@ struct DeckDetailView: View {
         let title: String
         let count: Int
         let items: [DeckExporter.CardCount]
+    }
+
+    private struct PrintingTile {
+        let card: Card
+        let printing: Printing
+    }
+
+    /// 把每張卡展開成「牌組中有放的刷版」各一格
+    private func printingTiles(for section: LevelSection) -> [PrintingTile] {
+        section.items.flatMap { item in
+            item.card.printings.compactMap { printing in
+                (deck.entry(forPrinting: printing.id)?.count ?? 0) > 0
+                    ? PrintingTile(card: item.card, printing: printing)
+                    : nil
+            }
+        }
     }
 
     private var sections: [LevelSection] {

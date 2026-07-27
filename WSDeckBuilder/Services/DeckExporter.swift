@@ -63,13 +63,16 @@ enum DeckExporter {
     }
 
     static func groupByCard(deck: Deck, database: CardDatabase) -> [CardCount] {
-        var byCard: [String: Int] = [:]
+        // 直接保留 Card 物件，不可用基礎卡號回查——SP 特典卡沒有同號刷版會漏算
+        var counts: [String: Int] = [:]
+        var cardsByID: [String: Card] = [:]
         for entry in deck.entries {
             guard let card = database.card(forPrinting: entry.printingID) else { continue }
-            byCard[card.id, default: 0] += entry.count
+            counts[card.id, default: 0] += entry.count
+            cardsByID[card.id] = card
         }
-        return byCard.compactMap { id, count in
-            database.card(forPrinting: id).map { CardCount(card: $0, count: count) }
+        return counts.compactMap { id, count in
+            cardsByID[id].map { CardCount(card: $0, count: count) }
         }.sorted { $0.card.id < $1.card.id }
     }
 

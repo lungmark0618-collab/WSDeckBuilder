@@ -24,6 +24,8 @@ final class CardDatabase {
             meta = set.meta
             cards = sortCards(set.cards)
             for card in cards {
+                // 基礎卡號也建索引：SP 特典卡（如 -113）沒有同號普卡刷版
+                cardIndex[card.id] = card
                 for printing in card.printings {
                     cardIndex[printing.id] = card
                     printingIndex[printing.id] = printing

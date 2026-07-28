@@ -19,7 +19,8 @@ struct CardDetailSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     CardImageView(printing: selectedPrinting, cardName: card.nameZH,
-                                  landscape: card.cardType == .climax)
+                                  landscape: card.cardType == .climax,
+                                  animatedFoil: true)
                         .frame(maxWidth: card.cardType == .climax ? 360 : 280)
                         .frame(maxWidth: .infinity)
 
@@ -41,7 +42,7 @@ struct CardDetailSheet: View {
                     } else if card.textZH == card.textJP {
                         // 尚未翻譯的系列：只顯示一份日文，不重複
                         abilitySection(title: "卡片文字（日文）", lines: card.textLinesJP)
-                        Label("此系列尚未翻譯，暫以日文顯示",
+                        Label("此卡尚未翻譯，暫以日文顯示",
                               systemImage: "character.book.closed")
                             .font(.caption)
                             .foregroundStyle(.secondary)

@@ -33,9 +33,13 @@ def load_json(path):
         return json.load(f)
 
 
-def load_translations():
+def load_translations(only=None):
+    """only=檔名清單（不含路徑）時只載入這些；None 表示全部。"""
     names, traits, texts = {}, {}, {}
-    for path in sorted(glob.glob(os.path.join(HERE, "translations", "*.json"))):
+    paths = sorted(glob.glob(os.path.join(HERE, "translations", "*.json")))
+    if only:
+        paths = [p for p in paths if os.path.basename(p) in only]
+    for path in paths:
         data = load_json(path)
         names.update(data.get("names", {}))
         traits.update(data.get("traits", {}))
@@ -101,8 +105,9 @@ def check_card(card, glossary):
     # 3. 《》特徵數量一致
     if len(TRAIT_REF.findall(jp)) != len(TRAIT_REF.findall(zh)):
         problems.append("《》數量不一致")
-    # 4. 譯文不得殘留假名
-    residue = KANA.findall(zh)
+    # 4. 譯文不得殘留假名（《》特徵與「」卡名屬專有名詞，可保留日文）
+    stripped = re.sub(r"《[^》]*》", "《》", re.sub(r"「[^」]*」", "「」", zh))
+    residue = KANA.findall(stripped)
     if residue:
         problems.append(f"殘留假名：{''.join(residue[:10])}")
     # 5. 術語一致性：原文含特定術語時譯文必須用指定譯名、不得用舊譯
@@ -126,21 +131,23 @@ def main():
     ap.add_argument("--out", default=os.path.join(HERE, "brd_cards.json"))
     ap.add_argument("--api", action="store_true",
                     help="未提供譯文的卡片改走 Claude API 批次翻譯")
+    ap.add_argument("--tr", default=None,
+                    help="只使用指定譯文檔（逗號分隔，如 auto_nik.json）")
     ap.add_argument("--mark-reviewed", action="store_true",
                     help="人工校對完成後執行：translation_status 全部改為 reviewed")
     args = ap.parse_args()
 
     raw = load_json(args.raw)
     glossary = load_json(os.path.join(HERE, "glossary.json"))
-    names, traits, texts_by_id = load_translations()
+    only = [x.strip() for x in args.tr.split(",")] if args.tr else None
+    names, traits, texts_by_id = load_translations(only)
 
     # 依 text_jp 完全一致建立譯文索引（同文重複收錄自動共用）
     text_map = {}
     for cid, zh in texts_by_id.items():
         card = next((c for c in raw["cards"] if c["id"] == cid), None)
         if card is None:
-            print(f"警告：譯文 key {cid} 不存在於 raw", file=sys.stderr)
-            continue
+            continue   # 其他作品的譯文 key，略過
         text_map[card["text_jp"]] = zh
 
     # 校對頁匯出的結果（review.html →「匯出校對結果」→ 放到 tools/）
@@ -188,13 +195,19 @@ def main():
         print(f"警告：{len(missing)} 張卡缺譯文（沿用日文）："
               f"{[c['id'] for c in missing[:10]]}", file=sys.stderr)
 
-    # 第三層驗證
-    failed = 0
+    # 第三層驗證：不通過就把譯文退回日文，寧可不翻也不出錯
+    failed = reverted = 0
     for card in cards_out:
         problems = check_card(card, glossary)
         if problems:
             failed += 1
             print(f"✗ {card['id']}: {'; '.join(problems)}", file=sys.stderr)
+            if card["text_zh"] != card["text_jp"]:
+                card["text_zh"] = card["text_jp"]
+                card["text_lines_zh"] = card["text_lines_jp"]
+                reverted += 1
+    if reverted:
+        print(f"（{reverted} 張驗證未過，譯文已退回日文）", file=sys.stderr)
 
     out = {"meta": dict(raw["meta"]), "cards": cards_out}
     out["meta"]["generated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S+08:00")

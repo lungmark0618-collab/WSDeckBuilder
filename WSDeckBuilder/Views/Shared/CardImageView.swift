@@ -6,6 +6,8 @@ struct CardImageView: View {
     let cardName: String
     /// CX 卡為橫式卡面，用橫置比例顯示
     var landscape = false
+    /// 燙金卡光澤是否播放掃光動畫（詳情頁 true、網格 false）
+    var animatedFoil = false
 
     private enum LoadState {
         case loading
@@ -36,6 +38,12 @@ struct CardImageView: View {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
+                .overlay {
+                    if printing.isFoil {
+                        FoilSheen(animated: animatedFoil)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                }
         case .blockedByPolicy:
             Button {
                 Task { await forceLoad() }

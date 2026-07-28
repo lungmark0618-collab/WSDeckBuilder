@@ -35,18 +35,25 @@ struct CardDetailSheet: View {
                     header
                     statsRow
 
-                    if !card.textZH.isEmpty {
-                        abilitySection(title: "能力（繁中）", lines: card.textLinesZH)
-                        abilitySection(title: "原文（日文）", lines: card.textLinesJP)
-                    } else {
+                    if card.textZH.isEmpty {
                         Text("（無能力文字）")
                             .foregroundStyle(.secondary)
-                    }
-
-                    if card.translationStatus == .machine {
-                        Label("此卡翻譯尚未人工校對", systemImage: "exclamationmark.triangle")
+                    } else if card.textZH == card.textJP {
+                        // 尚未翻譯的系列：只顯示一份日文，不重複
+                        abilitySection(title: "卡片文字（日文）", lines: card.textLinesJP)
+                        Label("此系列尚未翻譯，暫以日文顯示",
+                              systemImage: "character.book.closed")
                             .font(.caption)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        abilitySection(title: "能力（繁中）", lines: card.textLinesZH)
+                        abilitySection(title: "原文（日文）", lines: card.textLinesJP)
+                        if card.translationStatus == .machine {
+                            Label("此卡翻譯尚未人工校對",
+                                  systemImage: "exclamationmark.triangle")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
                     }
 
                     if let deck { deckControls(deck) }

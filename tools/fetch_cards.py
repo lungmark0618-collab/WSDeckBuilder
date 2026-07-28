@@ -178,14 +178,22 @@ def group_cards(items, source_rule):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--set", default="BRD/W139", help="卡號前綴，如 BRD/W139")
+    ap.add_argument("--sets", default="BRD/W139",
+                    help="卡號前綴，逗號分隔可合併多彈（如 BD/W125,BD/WE42）")
+    ap.add_argument("--title-jp", default="ブラウンダスト2")
+    ap.add_argument("--title-zh", default="棕色塵埃2")
     ap.add_argument("--out", default="raw_cards.json")
     args = ap.parse_args()
 
-    print(f"抓取 {args.set} …", file=sys.stderr)
-    items = fetch_all_items(args.set)
-    # 只保留卡號確實以目標前綴開頭的（keyword 搜尋可能誤中）
-    items = [it for it in items if it["card_number"].startswith(args.set)]
+    prefixes = [s.strip() for s in args.sets.split(",") if s.strip()]
+    items = []
+    for prefix in prefixes:
+        print(f"抓取 {prefix} …", file=sys.stderr)
+        fetched = fetch_all_items(prefix)
+        # 只保留卡號確實以目標前綴開頭的（keyword 搜尋可能誤中）
+        items.extend(it for it in fetched
+                     if it["card_number"].startswith(prefix))
+        time.sleep(REQUEST_INTERVAL)
 
     def source_rule(base_id: str):
         # 預組卡號慣例含 T（如 -T01）；PR 卡以稀有度判斷
@@ -195,9 +203,9 @@ def main():
     cards = group_cards(items, source_rule)
     out = {
         "meta": {
-            "title_code": args.set,
-            "title_name_jp": "ブラウンダスト2",
-            "title_name_zh": "棕色塵埃2",
+            "title_code": prefixes[0].rstrip("/"),
+            "title_name_jp": args.title_jp,
+            "title_name_zh": args.title_zh,
             "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S+08:00"),
             "schema_version": 1,
             "card_count": len(cards),

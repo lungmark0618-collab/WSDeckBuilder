@@ -15,7 +15,17 @@ final class CardSearchTests: XCTestCase {
     func testDataLoads() {
         XCTAssertNil(database.loadError)
         XCTAssertFalse(database.cards.isEmpty)
-        XCTAssertEqual(database.meta?.titleCode, "BRD/W139")
+        XCTAssertTrue(database.sets.contains { $0.titleCode == "BRD/W139" })
+        // 多作品：8 個新系列 + BRD
+        XCTAssertEqual(database.sets.count, 9, "\(database.sets.map(\.titleCode))")
+    }
+
+    func testTitleFilter() {
+        var query = SearchQuery()
+        query.titleCode = "BRD/W139"
+        let results = database.search(query)
+        XCTAssertEqual(results.count, 140)
+        XCTAssertTrue(results.allSatisfy { $0.id.hasPrefix("BRD/") })
     }
 
     func testEveryCardHasChineseName() {
@@ -85,8 +95,11 @@ final class CardSearchTests: XCTestCase {
         }
     }
 
-    func testSearchResultsSortedByLevel() {
-        let results = database.search(SearchQuery())
+    func testSearchResultsSortedByLevelWithinTitle() {
+        // 全域排序為作品 → 等級；單一作品內等級應遞增
+        var query = SearchQuery()
+        query.titleCode = "BRD/W139"
+        let results = database.search(query)
         let levels = results.map { $0.level ?? 99 }
         XCTAssertEqual(levels, levels.sorted())
     }

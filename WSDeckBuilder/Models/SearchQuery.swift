@@ -8,10 +8,12 @@ struct SearchQuery: Equatable {
     var triggers: Set<TriggerIcon> = []
     var traits: Set<String> = []
     var sourceOnly: CardSource? = nil
+    var titleCode: String? = nil    // 作品篩選（nil = 全部）
 
     var hasActiveFilters: Bool {
         !levels.isEmpty || !colors.isEmpty || !types.isEmpty
             || !triggers.isEmpty || !traits.isEmpty || sourceOnly != nil
+            || titleCode != nil
     }
 
     /// 卡號比對忽略大小寫與 `/` `-`（輸入 w139075 也能命中 BRD/W139-075）

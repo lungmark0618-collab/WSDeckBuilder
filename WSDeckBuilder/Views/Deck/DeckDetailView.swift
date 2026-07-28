@@ -81,6 +81,10 @@ struct DeckDetailView: View {
                 Label("同名超過4張", systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
             }
+            if validation.mixedTitles {
+                Label("跨作品混搭", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+            }
             Spacer()
         }
         .font(.caption.monospacedDigit())

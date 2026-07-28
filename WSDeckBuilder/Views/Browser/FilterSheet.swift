@@ -9,6 +9,17 @@ struct FilterSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section("作品") {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            titleChip(nil, label: "全部")
+                            ForEach(database.sets, id: \.titleCode) { meta in
+                                titleChip(meta.titleCode, label: meta.titleNameZH)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
                 Section("等級") {
                     toggleRow(items: [0, 1, 2, 3], set: $query.levels) { "Lv\($0)" }
                 }
@@ -50,6 +61,23 @@ struct FilterSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    /// 作品 chip（單選）
+    private func titleChip(_ code: String?, label: String) -> some View {
+        let isOn = query.titleCode == code
+        return Button {
+            query.titleCode = code
+        } label: {
+            Text(label)
+                .font(.callout)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(isOn ? Color.accentColor : Color(.tertiarySystemFill),
+                            in: Capsule())
+                .foregroundStyle(isOn ? .white : .primary)
+        }
+        .buttonStyle(.plain)
     }
 
     /// 判定標誌 chips：顯示官方卡面圖示

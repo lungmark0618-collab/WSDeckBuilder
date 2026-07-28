@@ -27,7 +27,8 @@ struct CardBrowserView: View {
                     list
                 }
             }
-            .navigationTitle(database.meta?.titleNameZH ?? "圖鑑")
+            .navigationTitle(database.sets.first { $0.titleCode == query.titleCode }?
+                .titleNameZH ?? "圖鑑")
             .searchable(text: $query.keyword, prompt: "卡號、卡名、能力文字")
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {

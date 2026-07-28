@@ -8,11 +8,13 @@ struct DeckValidator {
         var climaxCount: Int
         /// 同名超過 4 張的卡名（依 nameJP 分組，跨刷版、跨卡號）
         var overLimitNames: [String]
+        /// 混入了不同作品的卡（Neo-Standard 牌組須同一作品）
+        var mixedTitles: Bool = false
 
         var totalOK: Bool { totalCount == 50 }
         var climaxOK: Bool { climaxCount == 8 }
         var namesOK: Bool { overLimitNames.isEmpty }
-        var isLegal: Bool { totalOK && climaxOK && namesOK }
+        var isLegal: Bool { totalOK && climaxOK && namesOK && !mixedTitles }
     }
 
     /// 展開後的一筆：卡片 + 張數（呼叫端負責把 printingID 解析成 Card）
@@ -37,7 +39,12 @@ struct DeckValidator {
         }
         let over = byName.filter { $0.value > nameLimit }.keys.sorted()
 
-        return Result(totalCount: total, climaxCount: climax, overLimitNames: Array(over))
+        // 作品代號 = 卡號 `/` 前的字母（BRD、NIK、BD…）；同代號視為同作品
+        let titlePrefixes = Set(items.map { String($0.card.id.prefix(while: { $0 != "/" })) })
+
+        return Result(totalCount: total, climaxCount: climax,
+                      overLimitNames: Array(over),
+                      mixedTitles: titlePrefixes.count > 1)
     }
 
     /// 某一張卡（依卡名跨刷版）目前是否已達上限

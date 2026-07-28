@@ -133,12 +133,11 @@ struct SettingsView: View {
     }
 
     private var aboutSection: some View {
-        Section("關於") {
-            LabeledContent("收錄作品", value: database.meta?.titleNameZH ?? "-")
-            LabeledContent("作品編號", value: database.meta?.titleCode ?? "-")
-            LabeledContent("卡片數", value: "\(database.cards.count) 張")
-            LabeledContent("翻譯狀態",
-                           value: "機器翻譯（待校對）")
+        Section("收錄作品（共 \(database.cards.count) 張）") {
+            ForEach(database.sets, id: \.titleCode) { meta in
+                LabeledContent(meta.titleNameZH,
+                               value: "\(database.cardCount(inTitle: meta.titleCode)) 張")
+            }
         }
     }
 

@@ -90,6 +90,8 @@ def check_card(card, glossary):
     if not zh:
         problems.append("缺少譯文")
         return problems
+    if zh == jp:
+        return problems  # 未翻譯直通（多作品擴充：先收錄日文，翻譯後補）
     # 1. 數字集合必須一致（防止 3000 → 3500）
     if sorted(NUM.findall(jp)) != sorted(NUM.findall(zh)):
         problems.append(f"數字不一致 jp={NUM.findall(jp)} zh={NUM.findall(zh)}")

@@ -40,7 +40,7 @@ struct CardImageView: View {
                 .scaledToFit()
                 .overlay {
                     if printing.isFoil {
-                        FoilSheen(animated: animatedFoil)
+                        FoilSheen(interactive: animatedFoil)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                 }

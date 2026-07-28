@@ -12,6 +12,7 @@ final class CardDatabase {
     private var cardIndex: [String: Card] = [:]         // 任一刷版卡號 → Card
     private var printingIndex: [String: Printing] = [:] // 刷版卡號 → Printing
     private var titleByCardID: [String: String] = [:]   // 卡片 → title_code
+    private var relationIndex: [String: [CardRelation]] = [:]  // 卡片 → 關聯卡片
     /// 全部特徵（供 FilterSheet 列舉）
     private(set) var allTraits: [String] = []
 
@@ -50,7 +51,63 @@ final class CardDatabase {
             }
         }
         allTraits = Array(Set(cards.flatMap(\.traitsZH))).sorted()
+        buildRelations()
     }
+
+    /// 能力文字中以「」指名的卡片（羈絆對象、CX 連動指定的 CX 等），
+    /// 同時建立反向關聯（這張 CX 被哪些角色連動）
+    private func buildRelations() {
+        var byNameJP: [String: [Card]] = [:]
+        for card in cards {
+            byNameJP[card.nameJP, default: []].append(card)
+        }
+        var index: [String: [CardRelation]] = [:]
+
+        for card in cards where !card.textJP.isEmpty {
+            for line in card.textLinesJP {
+                for name in Self.quotedNames(in: line) where name != card.nameJP {
+                    guard let targets = byNameJP[name] else { continue }
+                    let kind = CardRelation.Kind(line: line, target: targets[0])
+                    for target in targets where target.id != card.id {
+                        index[card.id, default: []]
+                            .append(CardRelation(card: target, kind: kind))
+                        index[target.id, default: []]
+                            .append(CardRelation(card: card, kind: .referencedBy))
+                    }
+                }
+            }
+        }
+        // 同一張卡可能被多行提到：每張只留最具體的關聯（羈絆 > CX連動 > 指名）
+        for (id, relations) in index {
+            var best: [String: CardRelation] = [:]
+            for relation in relations {
+                let existing = best[relation.card.id]
+                if existing == nil || relation.kind.order < existing!.kind.order {
+                    best[relation.card.id] = relation
+                }
+            }
+            relationIndex[id] = best.values
+                .sorted { ($0.kind.order, $0.card.id) < ($1.kind.order, $1.card.id) }
+        }
+    }
+
+    private static func quotedNames(in line: String) -> [String] {
+        var names: [String] = []
+        var current: String?
+        for character in line {
+            if character == "「" {
+                current = ""
+            } else if character == "」" {
+                if let name = current, !name.isEmpty { names.append(name) }
+                current = nil
+            } else if current != nil {
+                current?.append(character)
+            }
+        }
+        return names
+    }
+
+    func relations(for card: Card) -> [CardRelation] { relationIndex[card.id] ?? [] }
 
     func titleCode(of card: Card) -> String? { titleByCardID[card.id] }
 

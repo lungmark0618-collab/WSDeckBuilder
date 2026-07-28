@@ -1,13 +1,36 @@
 import SwiftData
 import SwiftUI
 
-/// 點卡片彈出：大圖 + 日中對照 + 刷版切換（§4.3）
+/// 點卡片彈出：大圖 + 日中對照 + 刷版切換（§4.3）；
+/// 關聯卡片（羈絆／CX連動指名）可直接推進去看
 struct CardDetailSheet: View {
     let card: Card
     var deck: Deck?
 
-    @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            CardDetailContent(card: card, deck: deck)
+                .navigationDestination(for: Card.self) { related in
+                    CardDetailContent(card: related, deck: deck)
+                }
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("完成") { dismiss() }
+                    }
+                }
+        }
+    }
+}
+
+/// 詳情內容本體（可被 sheet 直接顯示，也可被 NavigationLink 推進）
+struct CardDetailContent: View {
+    let card: Card
+    var deck: Deck?
+
+    @Environment(CardDatabase.self) private var database
+    @Environment(\.modelContext) private var context
     @State private var selectedPrintingID: String = ""
 
     private var selectedPrinting: Printing {
@@ -15,8 +38,7 @@ struct CardDetailSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
+        ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     CardImageView(printing: selectedPrinting, cardName: card.nameZH,
                                   landscape: card.cardType == .climax,
@@ -57,19 +79,58 @@ struct CardDetailSheet: View {
                         }
                     }
 
+                    relationsSection
+
                     if let deck { deckControls(deck) }
                 }
                 .padding()
-            }
-            .navigationTitle(selectedPrinting.id)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { dismiss() }
+        }
+        .navigationTitle(selectedPrinting.id)
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { selectedPrintingID = card.defaultPrinting.id }
+    }
+
+    // MARK: - 關聯卡片（羈絆／CX連動／被指名）
+
+    @ViewBuilder
+    private var relationsSection: some View {
+        let relations = database.relations(for: card)
+        if !relations.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("關聯卡片").font(.caption).foregroundStyle(.secondary)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 10) {
+                        ForEach(relations) { relation in
+                            NavigationLink(value: relation.card) {
+                                relationTile(relation)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 2)
                 }
             }
+            .padding(10)
+            .background(Color(.secondarySystemBackground),
+                        in: RoundedRectangle(cornerRadius: 8))
         }
-        .onAppear { selectedPrintingID = card.defaultPrinting.id }
+    }
+
+    private func relationTile(_ relation: CardRelation) -> some View {
+        VStack(spacing: 4) {
+            CardImageView(printing: relation.card.defaultPrinting,
+                          cardName: relation.card.nameZH,
+                          landscape: relation.card.cardType == .climax)
+                .frame(width: relation.card.cardType == .climax ? 118 : 84)
+            Label(relation.kind.label, systemImage: relation.kind.symbol)
+                .font(.caption2)
+                .foregroundStyle(relation.kind == .referencedBy ? .secondary : .primary)
+            Text(relation.card.nameZH)
+                .font(.caption2)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .frame(width: 92)
+        }
     }
 
     private var header: some View {

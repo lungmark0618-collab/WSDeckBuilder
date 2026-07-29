@@ -118,6 +118,23 @@ struct DeckDetailView: View {
                                                  editable: isEditing) {
                                     detailCard = tile.card
                                 }
+                                .contextMenu {
+                                    Button {
+                                        deck.coverPrintingID = tile.printing.id
+                                        deck.updatedAt = .now
+                                        try? context.save()
+                                    } label: {
+                                        Label("設為牌組封面", systemImage: "photo.badge.checkmark")
+                                    }
+                                    if !deck.coverPrintingID.isEmpty {
+                                        Button {
+                                            deck.coverPrintingID = ""
+                                            try? context.save()
+                                        } label: {
+                                            Label("恢復自動封面", systemImage: "arrow.uturn.backward")
+                                        }
+                                    }
+                                }
                             }
                         }
                         .padding(.horizontal)

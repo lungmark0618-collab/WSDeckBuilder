@@ -47,7 +47,9 @@ struct CardDetailContent: View {
                                   landscape: card.cardType == .climax,
                                   animatedFoil: true)
                         .frame(maxWidth: card.cardType == .climax ? 360 : 280)
+                        .cardTilt()
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
 
                     if card.printings.count > 1 {
                         Picker("刷版", selection: $selectedPrintingID) {

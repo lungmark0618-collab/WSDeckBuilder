@@ -85,27 +85,80 @@ struct DeckListView: View {
                 .map { DeckValidator.CountedCard(card: $0, count: entry.count) }
         }
         let result = DeckValidator.validate(items)
-        return VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text(deck.name).font(.headline)
-                if deck.uuid.uuidString == activeDeckUUID {
-                    Text("編輯中")
-                        .font(.caption2)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 1)
-                        .background(Color.accentColor.opacity(0.15), in: Capsule())
+        let cover = deck.coverPrinting(database: database)
+        return HStack(spacing: 12) {
+            Group {
+                if let cover {
+                    CardImageView(printing: cover, cardName: deck.name)
+                        .frame(width: 46)
+                } else {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color(.tertiarySystemFill))
+                        .frame(width: 46, height: 64)
+                        .overlay {
+                            Image(systemName: "rectangle.stack")
+                                .foregroundStyle(.secondary)
+                        }
                 }
             }
-            HStack(spacing: 8) {
-                Text("\(result.totalCount)/50")
-                    .foregroundStyle(result.totalOK ? .green : .red)
-                Text("CX \(result.climaxCount)/8")
-                    .foregroundStyle(result.climaxOK ? .green : .red)
-                if result.isLegal {
-                    Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(deck.name).font(.headline)
+                    if deck.uuid.uuidString == activeDeckUUID {
+                        Text("編輯中")
+                            .font(.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Color.accentColor.opacity(0.15), in: Capsule())
+                    }
+                }
+                HStack(spacing: 8) {
+                    Text("\(result.totalCount)/50")
+                        .foregroundStyle(result.totalOK ? .green : .red)
+                    Text("CX \(result.climaxCount)/8")
+                        .foregroundStyle(result.climaxOK ? .green : .red)
+                    if result.isLegal {
+                        Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
+                    }
+                }
+                .font(.caption.monospacedDigit())
+                // 顏色比例條
+                colorBar(for: deck)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    /// 牌組的顏色比例條，一眼看出這是什麼色的牌
+    private func colorBar(for deck: Deck) -> some View {
+        var counts: [CardColor: Int] = [:]
+        for entry in deck.entries {
+            if let card = database.card(forPrinting: entry.printingID) {
+                counts[card.color, default: 0] += entry.count
+            }
+        }
+        let total = max(counts.values.reduce(0, +), 1)
+        return GeometryReader { geo in
+            HStack(spacing: 1) {
+                ForEach(CardColor.allCases) { color in
+                    if let count = counts[color], count > 0 {
+                        Capsule()
+                            .fill(swiftUIColor(color))
+                            .frame(width: geo.size.width * CGFloat(count) / CGFloat(total))
+                    }
                 }
             }
-            .font(.caption.monospacedDigit())
+        }
+        .frame(height: 4)
+        .opacity(deck.entries.isEmpty ? 0 : 1)
+    }
+
+    private func swiftUIColor(_ color: CardColor) -> Color {
+        switch color {
+        case .yellow: .yellow
+        case .green: .green
+        case .red: .red
+        case .blue: .blue
         }
     }
 

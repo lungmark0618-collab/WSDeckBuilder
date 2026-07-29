@@ -8,6 +8,8 @@ final class Deck {
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var note: String = ""
+    /// 封面卡的刷版卡號；空字串表示自動取牌組中等級最高的一張
+    var coverPrintingID: String = ""
     @Relationship(deleteRule: .cascade, inverse: \DeckEntry.deck)
     var entries: [DeckEntry] = []
 
@@ -21,6 +23,18 @@ final class Deck {
     }
 
     var totalCount: Int { entries.reduce(0) { $0 + $1.count } }
+
+    /// 封面刷版：使用者指定優先，否則取等級最高（其次張數多）的一張
+    func coverPrinting(database: CardDatabase) -> Printing? {
+        if !coverPrintingID.isEmpty,
+           let printing = database.printing(id: coverPrintingID) { return printing }
+        let candidates = entries.compactMap { entry -> (Printing, Int, Int)? in
+            guard let printing = database.printing(id: entry.printingID),
+                  let card = database.card(forPrinting: entry.printingID) else { return nil }
+            return (printing, card.level ?? -1, entry.count)
+        }
+        return candidates.max { ($0.1, $0.2) < ($1.1, $1.2) }?.0
+    }
 
     func entry(forPrinting id: String) -> DeckEntry? {
         entries.first { $0.printingID == id }

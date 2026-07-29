@@ -57,6 +57,13 @@ struct Printing: Codable, Identifiable, Hashable {
     var cacheFileName: String {
         id.replacingOccurrences(of: "/", with: "_") + ".png"
     }
+
+    /// 依稀有度決定箔紋樣式；資料未標示為平行卡時不套用
+    var foilStyle: FoilStyle {
+        let style = FoilStyle.forRarity(rarity)
+        if case .none = style { return isFoil ? .linear : .none }
+        return style
+    }
 }
 
 enum CardType: String, Codable, CaseIterable, Identifiable {

@@ -39,8 +39,9 @@ struct CardImageView: View {
                 .resizable()
                 .scaledToFit()
                 .overlay {
-                    if printing.isFoil {
-                        FoilSheen(interactive: animatedFoil)
+                    let style = printing.foilStyle
+                    if style != .none {
+                        FoilSheen(style: style, interactive: animatedFoil)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                 }

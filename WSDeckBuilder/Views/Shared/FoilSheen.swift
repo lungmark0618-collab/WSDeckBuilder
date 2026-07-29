@@ -1,13 +1,16 @@
 import SwiftUI
 
-/// 燙金／簽名卡的視覺效果，模擬實卡的稜鏡箔：
-/// 1) 持續存在的碎面稜鏡紋理（不是掃過就沒了）
-/// 2) 大面積彩虹光帶，隨傾斜移動
-/// 3) 沿角度移動的鏡面高光
+/// 燙金／簽名卡的視覺效果，依稀有度使用不同箔紋（對照實卡加工）：
+///   softHolo/glossHolo 淡・光澤 holo（R／RR／CX）
+///   linear   細密斜紋（SR）、grainy 顆粒箔（RRR）
+///   vertical 直向稜鏡條紋（SP 簽名卡）
+///   faceted  三角碎冰紋（SSP/SEC）
+///   radial   放射狀光芒（各作品特殊稀有度）
 ///
 /// interactive=true（詳情頁）時接陀螺儀，傾斜手機就會變色；
 /// false（網格）時用固定角度的靜態版本，不耗電。
 struct FoilSheen: View {
+    var style: FoilStyle = .linear
     var interactive = false
 
     @State private var motion = MotionManager.shared
@@ -26,11 +29,13 @@ struct FoilSheen: View {
         GeometryReader { geo in
             let size = geo.size
             ZStack {
-                facets(size: size)
+                pattern(size: size)
                 rainbow(size: size)
                 specular(size: size)
+                if style.hasGoldSignature { goldSignature(size: size) }
             }
             .compositingGroup()
+            .opacity(style.intensity)
         }
         .allowsHitTesting(false)
         .onAppear {
@@ -45,22 +50,44 @@ struct FoilSheen: View {
         .onDisappear { if interactive { motion.unsubscribe() } }
     }
 
-    // MARK: - 1. 碎面稜鏡紋理（實卡背景那層三角切面）
+    // MARK: - 1. 箔紋（依稀有度）
 
-    private func facets(size: CGSize) -> some View {
-        Canvas { context, canvasSize in
-            var generator = SeededRandom(seed: 20260729)
-            let step = max(canvasSize.width / 7, 18)
+    @ViewBuilder
+    private func pattern(size: CGSize) -> some View {
+        switch style {
+        case .none:
+            EmptyView()
+        case .faceted:
+            facetPattern.blendMode(.softLight)
+        case .vertical:
+            verticalPattern.blendMode(.softLight)
+        case .radial:
+            radialPattern.blendMode(.softLight)
+        case .grainy:
+            grainyPattern.blendMode(.softLight)
+        case .linear:
+            linearPattern.blendMode(.softLight)
+        case .glossHolo:
+            glossPattern.blendMode(.softLight)
+        case .softHolo:
+            EmptyView()   // 只靠彩虹與高光，不加紋理
+        }
+    }
+
+    /// 三角碎冰紋（SSP）
+    private var facetPattern: some View {
+        Canvas { context, size in
+            var rng = SeededRandom(seed: 20260729)
+            let step = max(size.width / 7, 18)
             var row = -step
             var rowIndex = 0
-            while row < canvasSize.height + step {
+            while row < size.height + step {
                 var column = -step
-                while column < canvasSize.width + step {
-                    // 每格切成兩個三角，亮度隨機但穩定
-                    let jitterX = CGFloat(generator.next()) * step * 0.5
-                    let jitterY = CGFloat(generator.next()) * step * 0.5
-                    let origin = CGPoint(x: column + jitterX,
-                                         y: row + jitterY + (rowIndex % 2 == 0 ? 0 : step / 2))
+                while column < size.width + step {
+                    let origin = CGPoint(
+                        x: column + CGFloat(rng.next()) * step * 0.5,
+                        y: row + CGFloat(rng.next()) * step * 0.5
+                            + (rowIndex % 2 == 0 ? 0 : step / 2))
                     for triangle in 0..<2 {
                         var path = Path()
                         if triangle == 0 {
@@ -73,8 +100,8 @@ struct FoilSheen: View {
                             path.addLine(to: CGPoint(x: origin.x, y: origin.y + step))
                         }
                         path.closeSubpath()
-                        let brightness = 0.03 + CGFloat(generator.next()) * 0.09
-                        context.fill(path, with: .color(.white.opacity(brightness)))
+                        context.fill(path,
+                                     with: .color(.white.opacity(0.03 + CGFloat(rng.next()) * 0.09)))
                     }
                     column += step
                 }
@@ -82,13 +109,94 @@ struct FoilSheen: View {
                 rowIndex += 1
             }
         }
-        .blendMode(.softLight)
     }
 
-    // MARK: - 2. 彩虹光帶（大面積、隨傾斜移動）
+    /// 直向稜鏡條紋（SP 簽名卡）
+    private var verticalPattern: some View {
+        Canvas { context, size in
+            var rng = SeededRandom(seed: 4242)
+            var x: CGFloat = 0
+            while x < size.width {
+                let width = 3 + CGFloat(rng.next()) * 9
+                let rect = CGRect(x: x, y: 0, width: width, height: size.height)
+                context.fill(Path(rect),
+                             with: .color(.white.opacity(0.02 + CGFloat(rng.next()) * 0.10)))
+                x += width
+            }
+        }
+    }
+
+    /// 放射狀光芒（特殊稀有度）
+    private var radialPattern: some View {
+        Canvas { context, size in
+            var rng = SeededRandom(seed: 777)
+            let center = CGPoint(x: size.width / 2, y: size.height * 0.42)
+            let radius = max(size.width, size.height) * 1.3
+            let rayCount = 44
+            for index in 0..<rayCount {
+                let start = Double(index) / Double(rayCount) * 2 * .pi
+                let sweep = (0.6 + rng.next() * 1.2) * .pi / Double(rayCount)
+                var path = Path()
+                path.move(to: center)
+                path.addArc(center: center, radius: radius,
+                            startAngle: .radians(start),
+                            endAngle: .radians(start + sweep), clockwise: false)
+                path.closeSubpath()
+                context.fill(path,
+                             with: .color(.white.opacity(0.02 + CGFloat(rng.next()) * 0.07)))
+            }
+        }
+    }
+
+    /// 顆粒感特殊箔（RRR 的ザラつき加工）
+    private var grainyPattern: some View {
+        Canvas { context, size in
+            var rng = SeededRandom(seed: 9091)
+            let count = Int(size.width * size.height / 90)
+            for _ in 0..<count {
+                let point = CGPoint(x: CGFloat(rng.next()) * size.width,
+                                    y: CGFloat(rng.next()) * size.height)
+                let radius = 0.6 + CGFloat(rng.next()) * 1.4
+                let rect = CGRect(x: point.x, y: point.y,
+                                  width: radius * 2, height: radius * 2)
+                context.fill(Path(ellipseIn: rect),
+                             with: .color(.white.opacity(0.05 + CGFloat(rng.next()) * 0.16)))
+            }
+        }
+    }
+
+    /// 光澤 holo（RR／CX）：柔和的大面積光暈，不做細紋
+    private var glossPattern: some View {
+        RadialGradient(
+            colors: [.white.opacity(0.10), .white.opacity(0.03), .clear],
+            center: .init(x: 0.35, y: 0.30),
+            startRadius: 0, endRadius: 320)
+    }
+
+    /// 細密斜紋（SR 等一般箔押）
+    private var linearPattern: some View {
+        Canvas { context, size in
+            var rng = SeededRandom(seed: 1357)
+            let spacing: CGFloat = 5
+            var offset = -size.height
+            while offset < size.width + size.height {
+                var path = Path()
+                path.move(to: CGPoint(x: offset, y: 0))
+                path.addLine(to: CGPoint(x: offset + size.height * 0.4, y: size.height))
+                context.stroke(path,
+                               with: .color(.white.opacity(0.03 + CGFloat(rng.next()) * 0.06)),
+                               lineWidth: 1.5)
+                offset += spacing
+            }
+        }
+    }
+
+    // MARK: - 2. 彩虹光帶（隨傾斜移動）
 
     private func rainbow(size: CGSize) -> some View {
         let offset = shift
+        // 直紋卡的彩虹也走直向，與箔紋一致
+        let vertical = style == .vertical
         return LinearGradient(
             stops: [
                 .init(color: .clear, location: 0.00),
@@ -102,16 +210,18 @@ struct FoilSheen: View {
                 .init(color: Color(red: 0.50, green: 0.40, blue: 1.00).opacity(0.30), location: 0.86),
                 .init(color: .clear, location: 1.00),
             ],
-            startPoint: UnitPoint(x: -0.4 + offset.width * 0.55,
-                                  y: -0.1 + offset.height * 0.35),
-            endPoint: UnitPoint(x: 1.4 + offset.width * 0.55,
-                                y: 1.1 + offset.height * 0.35))
+            startPoint: vertical
+                ? UnitPoint(x: -0.4 + offset.width * 0.75, y: 0.5)
+                : UnitPoint(x: -0.4 + offset.width * 0.55, y: -0.1 + offset.height * 0.35),
+            endPoint: vertical
+                ? UnitPoint(x: 1.4 + offset.width * 0.75, y: 0.5)
+                : UnitPoint(x: 1.4 + offset.width * 0.55, y: 1.1 + offset.height * 0.35))
         .blendMode(.overlay)
         .opacity(0.55)
         .animation(.easeOut(duration: 0.12), value: offset)
     }
 
-    // MARK: - 3. 鏡面高光（順著傾斜跑的亮帶）
+    // MARK: - 3. 鏡面高光
 
     private func specular(size: CGSize) -> some View {
         let offset = shift
@@ -119,7 +229,7 @@ struct FoilSheen: View {
             colors: [.clear, .white.opacity(0.22), .clear],
             startPoint: .top, endPoint: .bottom)
         .frame(width: size.width * 2.2, height: size.height * 0.22)
-        .rotationEffect(.degrees(-24))
+        .rotationEffect(.degrees(style == .vertical ? -78 : -24))
         .offset(x: offset.width * size.width * 0.35,
                 y: offset.height * size.height * 0.55)
         .frame(width: size.width, height: size.height)
@@ -127,9 +237,25 @@ struct FoilSheen: View {
         .blendMode(.screen)
         .animation(.easeOut(duration: 0.12), value: offset)
     }
+
+    // MARK: - 4. 金色簽名箔（簽名卡專有的暖金光澤）
+
+    private func goldSignature(size: CGSize) -> some View {
+        let offset = shift
+        return RadialGradient(
+            colors: [Color(red: 1.0, green: 0.85, blue: 0.35).opacity(0.30),
+                     Color(red: 1.0, green: 0.65, blue: 0.15).opacity(0.14),
+                     .clear],
+            center: UnitPoint(x: 0.5 + offset.width * 0.28,
+                              y: 0.55 + offset.height * 0.18),
+            startRadius: 0,
+            endRadius: max(size.width, size.height) * 0.55)
+        .blendMode(.screen)
+        .animation(.easeOut(duration: 0.12), value: offset)
+    }
 }
 
-/// 固定種子的亂數，讓碎面紋理每次繪製都一樣（不會閃爍）
+/// 固定種子的亂數，讓箔紋每次繪製都一樣（不會閃爍）
 private struct SeededRandom {
     private var state: UInt64
 

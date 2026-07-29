@@ -4,11 +4,14 @@ import SwiftUI
 @main
 struct WSDeckBuilderApp: App {
     @State private var database = CardDatabase()
+    @State private var appearance = AppearanceSettings.shared
 
     var body: some Scene {
         WindowGroup {
             RootTabView()
                 .environment(database)
+                .environment(appearance)
+                .appAppearance(appearance)
                 .onAppear {
                     if database.cards.isEmpty { database.load() }
                 }

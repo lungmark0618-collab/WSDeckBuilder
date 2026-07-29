@@ -4,6 +4,7 @@ import SwiftUI
 /// 圖鑑分頁：搜尋 + 篩選 + 網格/清單切換（§4.3）
 struct CardBrowserView: View {
     @Environment(CardDatabase.self) private var database
+    @Environment(AppearanceSettings.self) private var appearance
     @Query(sort: \Deck.createdAt) private var decks: [Deck]
     @AppStorage("activeDeckUUID") private var activeDeckUUID: String = ""
     @AppStorage("browserUsesGrid") private var usesGrid = true
@@ -51,6 +52,10 @@ struct CardBrowserView: View {
             }
             .sheet(isPresented: $showFilter) {
                 FilterSheet(query: $query)
+            }
+            // 強調色跟著目前瀏覽的作品
+            .onChange(of: query.titleCode, initial: true) {
+                appearance.currentTitleCode = query.titleCode ?? ""
             }
             .sheet(item: $detailCard) { card in
                 CardDetailSheet(card: card, deck: activeDeck)

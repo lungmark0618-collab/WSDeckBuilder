@@ -19,6 +19,15 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    NavigationLink {
+                        AppearanceSettingsView()
+                    } label: {
+                        Label("外觀", systemImage: "paintpalette")
+                    }
+                } footer: {
+                    Text("字體大小與粗細、文字與背景顏色、強調色。")
+                }
                 networkSection
                 prefetchSection
                 cacheSection

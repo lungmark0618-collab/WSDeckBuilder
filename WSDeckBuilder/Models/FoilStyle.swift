@@ -5,7 +5,7 @@ import Foundation
 /// RRR 為「特殊ホロ加工＋ザラつき加工」（顆粒感）、SP/SSP 為簽名＋平行加工。
 enum FoilStyle: Equatable {
     case none        // C / U / N / TD：無加工
-    case softHolo    // R：淡淡的整面 holo
+    case confetti    // R：彩色亮片散點（實卡確認）
     case glossHolo   // RR / CX：帶光澤的 holo
     case linear      // SR：細密斜向箔紋
     case grainy      // RRR：顆粒感（ザラつき）特殊箔
@@ -25,7 +25,7 @@ enum FoilStyle: Equatable {
     var intensity: Double {
         switch self {
         case .none: 0
-        case .softHolo: 0.45
+        case .confetti: 0.85
         case .glossHolo: 0.60
         case .linear: 0.78
         case .grainy: 0.88
@@ -38,7 +38,7 @@ enum FoilStyle: Equatable {
     var label: String {
         switch self {
         case .none: "無加工"
-        case .softHolo: "holo"
+        case .confetti: "亮片箔"
         case .glossHolo: "光澤 holo"
         case .linear: "箔紋"
         case .grainy: "顆粒箔"
@@ -68,9 +68,9 @@ enum FoilStyle: Equatable {
         // 光澤 holo：RR 與 CX 卡
         case "RR", "CC":
             .glossHolo
-        // 淡 holo
+        // 彩色亮片散點
         case "R":
-            .softHolo
+            .confetti
         // C / U / N / TD / TDP / HC / HU / PR：無加工
         default:
             .none

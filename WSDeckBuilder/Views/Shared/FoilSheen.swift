@@ -69,8 +69,8 @@ struct FoilSheen: View {
             linearPattern.blendMode(.softLight)
         case .glossHolo:
             glossPattern.blendMode(.softLight)
-        case .softHolo:
-            EmptyView()   // 只靠彩虹與高光，不加紋理
+        case .confetti:
+            confettiPattern.blendMode(.plusLighter)
         }
     }
 
@@ -144,6 +144,33 @@ struct FoilSheen: View {
                 path.closeSubpath()
                 context.fill(path,
                              with: .color(.white.opacity(0.02 + CGFloat(rng.next()) * 0.07)))
+            }
+        }
+    }
+
+    /// 彩色亮片散點（R 卡：整面散布大小不一的圓點，各自反射不同顏色）
+    private var confettiPattern: some View {
+        Canvas { context, size in
+            var rng = SeededRandom(seed: 31337)
+            let hues: [Color] = [
+                Color(red: 0.45, green: 1.00, blue: 0.60),   // 綠
+                Color(red: 0.40, green: 0.90, blue: 1.00),   // 青
+                Color(red: 1.00, green: 0.55, blue: 0.85),   // 粉
+                Color(red: 1.00, green: 0.95, blue: 0.50),   // 黃
+                Color(red: 0.85, green: 0.80, blue: 1.00),   // 紫
+                Color(red: 1.00, green: 1.00, blue: 1.00),   // 銀白
+            ]
+            let count = Int(size.width * size.height / 260)
+            for _ in 0..<count {
+                let x = CGFloat(rng.next()) * size.width
+                let y = CGFloat(rng.next()) * size.height
+                let diameter = 1.6 + CGFloat(rng.next()) * 3.4
+                let color = hues[Int(rng.next() * Double(hues.count)) % hues.count]
+                context.fill(
+                    Path(ellipseIn: CGRect(x: x, y: y,
+                                           width: diameter,
+                                           height: diameter * (0.7 + CGFloat(rng.next()) * 0.6))),
+                    with: .color(color.opacity(0.28 + CGFloat(rng.next()) * 0.40)))
             }
         }
     }

@@ -20,6 +20,6 @@ struct WSDeckBuilderApp: App {
                     Task { await ImageCache.shared.handleMemoryWarning() }
                 }
         }
-        .modelContainer(for: [Deck.self, DeckEntry.self])
+        .modelContainer(for: [Deck.self, DeckEntry.self, CollectionEntry.self])
     }
 }

@@ -35,6 +35,17 @@ struct FilterSheet: View {
                 Section("特徵") {
                     toggleRow(items: database.allTraits, set: $query.traits) { "《\($0)》" }
                 }
+                Section {
+                    Picker("收藏狀態", selection: $query.ownership) {
+                        ForEach(OwnershipFilter.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                } header: {
+                    Text("我的收藏")
+                } footer: {
+                    Text("依「我的收藏」記錄的擁有張數篩選，可用來找還沒收到的卡。")
+                }
                 Section("收錄來源") {
                     Picker("來源", selection: $query.sourceOnly) {
                         Text("全部").tag(CardSource?.none)

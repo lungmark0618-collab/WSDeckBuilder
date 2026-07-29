@@ -31,7 +31,10 @@ struct CardDetailContent: View {
 
     @Environment(CardDatabase.self) private var database
     @Environment(\.modelContext) private var context
+    @Query private var collection: [CollectionEntry]
     @State private var selectedPrintingID: String = ""
+
+    private var ownedIndex: [String: Int] { CollectionStore.index(collection) }
 
     private var selectedPrinting: Printing {
         card.printings.first { $0.id == selectedPrintingID } ?? card.defaultPrinting
@@ -80,6 +83,7 @@ struct CardDetailContent: View {
                     }
 
                     relationsSection
+                    collectionControls
 
                     if let deck { deckControls(deck) }
                 }
@@ -187,6 +191,44 @@ struct CardDetailContent: View {
                 CardTextRenderer.render(line)
                     .font(.callout)
                     .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(10)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    // MARK: - 我的收藏（實際擁有幾張）
+
+    private var collectionControls: some View {
+        let total = CollectionStore.owned(of: card, in: ownedIndex)
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("我的收藏", systemImage: "shippingbox")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if total > 0 {
+                    Text("共 \(total) 張")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+            ForEach(card.printings) { printing in
+                let owned = ownedIndex[printing.id] ?? 0
+                HStack {
+                    Text(printing.rarity)
+                        .font(.callout.bold())
+                        .frame(width: 44, alignment: .leading)
+                    Text(printing.id)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    CountStepper(count: owned) { delta in
+                        CollectionStore.adjust(printingID: printing.id, by: delta,
+                                               entries: collection, context: context)
+                    }
+                }
+                .foregroundStyle(owned > 0 ? .primary : .secondary)
             }
         }
         .padding(10)

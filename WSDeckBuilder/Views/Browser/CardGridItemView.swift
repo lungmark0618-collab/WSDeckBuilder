@@ -13,6 +13,11 @@ struct CardGridItemView: View {
     var onTap: () -> Void
 
     @Environment(\.modelContext) private var context
+    @Query private var collection: [CollectionEntry]
+
+    private var ownedCount: Int {
+        CollectionStore.owned(of: card, in: CollectionStore.index(collection))
+    }
 
     private var displayPrinting: Printing { printing ?? card.defaultPrinting }
 
@@ -33,6 +38,16 @@ struct CardGridItemView: View {
             Button(action: onTap) {
                 CardImageView(printing: displayPrinting, cardName: card.nameZH,
                               landscape: card.cardType == .climax)
+                    .overlay(alignment: .bottomLeading) {
+                        if ownedCount > 0 {
+                            Label("\(ownedCount)", systemImage: "shippingbox.fill")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 5).padding(.vertical, 2)
+                                .background(.black.opacity(0.6), in: Capsule())
+                                .padding(4)
+                        }
+                    }
                     .overlay(alignment: .topTrailing) {
                         if badgeCount > 0 {
                             Text("\(badgeCount)")

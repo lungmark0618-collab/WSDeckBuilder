@@ -12,10 +12,18 @@ struct DeckDetailView: View {
     @State private var detailCard: Card?
     @State private var isEditing = false
 
+    @Query private var collection: [CollectionEntry]
+
     private enum Mode: String, CaseIterable {
         case grid = "圖片"
         case list = "清單"
         case stats = "統計"
+        case shortage = "缺卡"
+    }
+
+    private var shortages: [CollectionStore.Shortage] {
+        CollectionStore.shortages(deck: deck, database: database,
+                                  index: CollectionStore.index(collection))
     }
 
     private var countedItems: [DeckValidator.CountedCard] {
@@ -41,6 +49,7 @@ struct DeckDetailView: View {
             case .grid: cardGrid
             case .list: cardList
             case .stats: DeckStatsView(items: countedItems)
+            case .shortage: shortageList
             }
         }
         .navigationTitle(deck.name)
@@ -204,6 +213,56 @@ struct DeckDetailView: View {
         return result
     }
 
+    // MARK: - 缺卡清單（對照「我的收藏」算出還要收哪些）
+
+    private var shortageList: some View {
+        let items = shortages
+        let total = items.reduce(0) { $0 + $1.missing }
+        return List {
+            if items.isEmpty {
+                ContentUnavailableView("這副牌都收齊了",
+                                       systemImage: "checkmark.seal.fill",
+                                       description: Text("牌組內每張卡的擁有數都足夠"))
+                    .listRowBackground(Color.clear)
+            } else {
+                Section {
+                    ForEach(items) { item in
+                        HStack(spacing: 10) {
+                            CardImageView(printing: item.printing,
+                                          cardName: item.card.nameZH,
+                                          landscape: item.card.cardType == .climax)
+                                .frame(width: item.card.cardType == .climax ? 64 : 46)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.card.nameZH).font(.callout).lineLimit(1)
+                                HStack(spacing: 6) {
+                                    Text(item.printing.rarity).font(.caption2.bold())
+                                    Text(item.printing.id).font(.caption2.monospaced())
+                                }
+                                .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("缺 \(item.missing)")
+                                    .font(.callout.monospacedDigit().bold())
+                                    .foregroundStyle(.red)
+                                Text("\(item.owned)/\(item.needed)")
+                                    .font(.caption2.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture { detailCard = item.card }
+                    }
+                } header: {
+                    Text("還缺 \(total) 張（共 \(items.count) 種）")
+                } footer: {
+                    Text("依「我的收藏」記錄計算。到卡片詳情頁的「我的收藏」可調整擁有張數。")
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+
     // MARK: - 匯出（§4.4.5，ShareLink）
 
     private var exportMenu: some View {
@@ -213,6 +272,9 @@ struct DeckDetailView: View {
             }
             ShareLink(item: DeckExporter.collectorText(deck: deck, database: database)) {
                 Label("匯出收牌清單（含刷版）", systemImage: "list.bullet.rectangle")
+            }
+            ShareLink(item: CollectionStore.shortageText(deck: deck, shortages: shortages)) {
+                Label("匯出缺卡清單", systemImage: "cart")
             }
             ShareLink(item: DeckExporter.json(deck: deck),
                       preview: SharePreview("\(deck.name).json")) {

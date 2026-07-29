@@ -17,7 +17,17 @@ struct CardBrowserView: View {
         decks.first { $0.uuid.uuidString == activeDeckUUID }
     }
 
-    private var results: [Card] { database.search(query) }
+    @Query private var collection: [CollectionEntry]
+
+    private var results: [Card] {
+        let found = database.search(query)
+        guard query.ownership != .all else { return found }
+        let index = CollectionStore.index(collection)
+        return found.filter { card in
+            let owned = CollectionStore.owned(of: card, in: index)
+            return query.ownership == .owned ? owned > 0 : owned == 0
+        }
+    }
 
     var body: some View {
         NavigationStack {

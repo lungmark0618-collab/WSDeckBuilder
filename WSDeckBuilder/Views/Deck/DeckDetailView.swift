@@ -11,6 +11,7 @@ struct DeckDetailView: View {
     @State private var mode: Mode = .cards
     @State private var detailCard: Card?
     @State private var isEditing = false
+    @State private var isPickingCover = false
     /// 卡表的顯示方式（與圖鑑分頁各自記憶）
     @AppStorage("deckUsesGrid") private var usesGrid = true
 
@@ -67,7 +68,7 @@ struct DeckDetailView: View {
                     .accessibilityLabel(usesGrid ? "改為清單顯示" : "改為圖片顯示")
                 }
             }
-            ToolbarItem(placement: .topBarTrailing) { exportMenu }
+            ToolbarItem(placement: .topBarTrailing) { actionMenu }
             ToolbarItem(placement: .confirmationAction) {
                 if isEditing {
                     Button("完成") {
@@ -85,6 +86,9 @@ struct DeckDetailView: View {
         }
         .sheet(item: $detailCard) { card in
             CardDetailSheet(card: card, deck: deck)
+        }
+        .sheet(isPresented: $isPickingCover) {
+            DeckCoverPickerView(deck: deck)
         }
     }
 
@@ -292,27 +296,37 @@ struct DeckDetailView: View {
         .listStyle(.insetGrouped)
     }
 
-    // MARK: - 匯出（§4.4.5，ShareLink）
+    // MARK: - 牌組操作＋匯出（§4.4.5，ShareLink）
 
-    private var exportMenu: some View {
+    private var actionMenu: some View {
         Menu {
-            ShareLink(item: DeckExporter.simpleText(deck: deck, database: database)) {
-                Label("匯出牌表（簡潔版）", systemImage: "doc.plaintext")
+            Section {
+                Button {
+                    isPickingCover = true
+                } label: {
+                    Label("選擇封面", systemImage: "photo.badge.checkmark")
+                }
+                .disabled(deck.entries.isEmpty)
             }
-            ShareLink(item: DeckExporter.collectorText(deck: deck, database: database)) {
-                Label("匯出收牌清單（含刷版）", systemImage: "list.bullet.rectangle")
-            }
-            ShareLink(item: CollectionStore.shortageText(deck: deck, shortages: shortages)) {
-                Label("匯出缺卡清單", systemImage: "cart")
-            }
-            if let url = DeckExporter.jsonFile(deck: deck) {
-                ShareLink(item: url,
-                          preview: SharePreview("\(deck.name).json")) {
-                    Label("匯出 JSON 備份（可再匯入）", systemImage: "curlybraces")
+            Section("匯出") {
+                ShareLink(item: DeckExporter.simpleText(deck: deck, database: database)) {
+                    Label("匯出牌表（簡潔版）", systemImage: "doc.plaintext")
+                }
+                ShareLink(item: DeckExporter.collectorText(deck: deck, database: database)) {
+                    Label("匯出收牌清單（含刷版）", systemImage: "list.bullet.rectangle")
+                }
+                ShareLink(item: CollectionStore.shortageText(deck: deck, shortages: shortages)) {
+                    Label("匯出缺卡清單", systemImage: "cart")
+                }
+                if let url = DeckExporter.jsonFile(deck: deck) {
+                    ShareLink(item: url,
+                              preview: SharePreview("\(deck.name).json")) {
+                        Label("匯出 JSON 備份（可再匯入）", systemImage: "curlybraces")
+                    }
                 }
             }
         } label: {
-            Image(systemName: "square.and.arrow.up")
+            Image(systemName: "ellipsis.circle")
         }
     }
 }

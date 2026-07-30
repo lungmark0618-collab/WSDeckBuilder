@@ -128,70 +128,113 @@ struct DeckListView: View {
         }
         let result = DeckValidator.validate(items)
         let cover = deck.coverPrinting(database: database)
-        return HStack(spacing: 12) {
+        let isActive = deck.uuid.uuidString == activeDeckUUID
+        return HStack(spacing: 13) {
+            // 封面：卡片本身就是最好的識別，給它足夠份量
             Group {
                 if let cover {
                     CardImageView(printing: cover, cardName: deck.name)
-                        .frame(width: 46)
+                        .frame(width: 58)
                 } else {
                     RoundedRectangle(cornerRadius: 6)
                         .fill(Color(.tertiarySystemFill))
-                        .frame(width: 46, height: 64)
+                        .frame(width: 58, height: 81)
                         .overlay {
                             Image(systemName: "rectangle.stack")
-                                .foregroundStyle(.secondary)
+                                .font(.title3)
+                                .foregroundStyle(.tertiary)
                         }
                 }
             }
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(deck.name).font(.headline)
-                    if deck.uuid.uuidString == activeDeckUUID {
+            .shadow(color: .black.opacity(0.18), radius: 3, x: 0, y: 2)
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 6) {
+                    Text(deck.name)
+                        .font(.headline)
+                        .lineLimit(1)
+                    if isActive {
                         Text("編輯中")
-                            .font(.caption2)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(Color.accentColor)
                             .padding(.horizontal, 6)
-                            .padding(.vertical, 1)
+                            .padding(.vertical, 2)
                             .background(Color.accentColor.opacity(0.15), in: Capsule())
                     }
                 }
+
+                // 作品名稱：多系列混用時一眼分辨這是哪副牌
+                if let title = titleName(for: deck) {
+                    Text(title)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
                 HStack(spacing: 8) {
                     Text("\(result.totalCount)/50")
-                        .foregroundStyle(result.totalOK ? .green : .red)
+                        .foregroundStyle(result.totalOK ? .green : .secondary)
                     Text("CX \(result.climaxCount)/8")
-                        .foregroundStyle(result.climaxOK ? .green : .red)
+                        .foregroundStyle(result.climaxOK ? .green : .secondary)
                     if result.isLegal {
-                        Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundStyle(.green)
+                    } else if !result.namesOK {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
                     }
                 }
                 .font(.caption.monospacedDigit())
-                // 顏色比例條
-                colorBar(for: deck)
+
+                colorBar(for: deck, total: result.totalCount)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 
-    /// 牌組的顏色比例條，一眼看出這是什麼色的牌
-    private func colorBar(for deck: Deck) -> some View {
+    /// 牌組主要作品（取張數最多的），空牌組回傳 nil
+    private func titleName(for deck: Deck) -> String? {
+        var counts: [String: Int] = [:]
+        for entry in deck.entries {
+            if let card = database.card(forPrinting: entry.printingID),
+               let code = database.titleCode(of: card) {
+                counts[code, default: 0] += entry.count
+            }
+        }
+        guard let top = counts.max(by: { $0.value < $1.value })?.key else { return nil }
+        let name = database.sets.first { $0.titleCode == top }?.titleNameZH
+        // 跨作品混搭時標示出來，免得以為只有一個系列
+        return counts.count > 1 ? name.map { "\($0) 等 \(counts.count) 個作品" } : name
+    }
+
+    /// 顏色比例條 + 進度感：底槽表示 50 張，填滿的部分才是已放的卡
+    private func colorBar(for deck: Deck, total: Int) -> some View {
         var counts: [CardColor: Int] = [:]
         for entry in deck.entries {
             if let card = database.card(forPrinting: entry.printingID) {
                 counts[card.color, default: 0] += entry.count
             }
         }
-        let total = max(counts.values.reduce(0, +), 1)
+        let deckSize = max(DeckValidator.deckSize, 1)
+        let filled = min(CGFloat(total) / CGFloat(deckSize), 1)
+        let colorTotal = max(counts.values.reduce(0, +), 1)
         return GeometryReader { geo in
-            HStack(spacing: 1) {
-                ForEach(CardColor.allCases) { color in
-                    if let count = counts[color], count > 0 {
-                        Capsule()
-                            .fill(swiftUIColor(color))
-                            .frame(width: geo.size.width * CGFloat(count) / CGFloat(total))
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color(.tertiarySystemFill))
+                HStack(spacing: 1) {
+                    ForEach(CardColor.allCases) { color in
+                        if let count = counts[color], count > 0 {
+                            Capsule()
+                                .fill(swiftUIColor(color))
+                                .frame(width: geo.size.width * filled
+                                       * CGFloat(count) / CGFloat(colorTotal))
+                        }
                     }
                 }
             }
         }
-        .frame(height: 4)
+        .frame(height: 6)
         .opacity(deck.entries.isEmpty ? 0 : 1)
     }
 

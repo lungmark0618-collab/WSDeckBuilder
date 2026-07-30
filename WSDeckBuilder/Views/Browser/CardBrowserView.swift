@@ -40,6 +40,8 @@ struct CardBrowserView: View {
             }
             .navigationTitle(database.sets.first { $0.titleCode == query.titleCode }?
                 .titleNameZH ?? "圖鑑")
+            // 大標題會在搜尋列上方留一整塊空白，卡圖比標題重要，改用 inline
+            .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query.keyword, prompt: "卡號、卡名、能力文字")
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {

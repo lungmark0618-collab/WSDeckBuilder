@@ -47,18 +47,36 @@ struct DeckEntryRowView: View {
         }
     }
 
+    /// 牌組中實際放的刷版優先，沒有才退回普卡
+    private var displayPrinting: Printing {
+        card.printings.first { (deck.entry(forPrinting: $0.id)?.count ?? 0) > 0 }
+            ?? card.defaultPrinting
+    }
+
     private var label: some View {
         Button(action: onTap) {
-            HStack {
+            HStack(spacing: 10) {
+                // 純文字清單太難掃視，補一張縮圖當視覺錨點
+                CardImageView(printing: displayPrinting,
+                              cardName: card.nameZH,
+                              landscape: card.cardType == .climax)
+                    .frame(width: card.cardType == .climax ? 52 : 36)
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(card.nameZH)
                         .font(.callout)
                         .foregroundStyle(overLimit ? .red : .primary)
-                    Text(raritySummary.isEmpty ? card.id : raritySummary)
-                        .font(.caption2.monospaced())
-                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                    HStack(spacing: 6) {
+                        if let level = card.level, card.cardType != .climax {
+                            Text("Lv\(level)")
+                        }
+                        Text(raritySummary.isEmpty ? card.id : raritySummary)
+                    }
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.secondary)
                 }
-                Spacer()
+                Spacer(minLength: 4)
                 Text("×\(cardTotal)")
                     .font(.body.monospacedDigit().bold())
                     .foregroundStyle(overLimit ? .red : .primary)

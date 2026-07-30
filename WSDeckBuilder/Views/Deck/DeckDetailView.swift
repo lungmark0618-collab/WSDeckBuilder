@@ -1,22 +1,23 @@
 import SwiftData
 import SwiftUI
 
-/// 單一牌組編輯，依等級分組；卡表/統計切換（§4.3）
+/// 單一牌組編輯，依等級分組；卡表／統計／缺卡切換，卡表可切圖片或清單（§4.3）
 struct DeckDetailView: View {
     @Bindable var deck: Deck
     @Environment(CardDatabase.self) private var database
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
-    @State private var mode: Mode = .grid
+    @State private var mode: Mode = .cards
     @State private var detailCard: Card?
     @State private var isEditing = false
+    /// 卡表的顯示方式（與圖鑑分頁各自記憶）
+    @AppStorage("deckUsesGrid") private var usesGrid = true
 
     @Query private var collection: [CollectionEntry]
 
     private enum Mode: String, CaseIterable {
-        case grid = "圖片"
-        case list = "清單"
+        case cards = "卡表"
         case stats = "統計"
         case shortage = "缺卡"
     }
@@ -46,8 +47,8 @@ struct DeckDetailView: View {
             .padding(.vertical, 6)
 
             switch mode {
-            case .grid: cardGrid
-            case .list: cardList
+            case .cards:
+                if usesGrid { cardGrid } else { cardList }
             case .stats: DeckStatsView(items: countedItems)
             case .shortage: shortageList
             }
@@ -55,6 +56,17 @@ struct DeckDetailView: View {
         .navigationTitle(deck.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // 卡表模式才需要切換圖片／清單
+            if mode == .cards {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        withAnimation { usesGrid.toggle() }
+                    } label: {
+                        Image(systemName: usesGrid ? "list.bullet" : "square.grid.3x3")
+                    }
+                    .accessibilityLabel(usesGrid ? "改為清單顯示" : "改為圖片顯示")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) { exportMenu }
             ToolbarItem(placement: .confirmationAction) {
                 if isEditing {

@@ -12,6 +12,11 @@ struct DeckListView: View {
     @State private var newName = ""
     @State private var showCreateAlert = false
     @State private var createName = ""
+    @State private var showFileImporter = false
+    @State private var showPasteSheet = false
+    @State private var pastedText = ""
+    @State private var importResult: DeckImporter.Result?
+    @State private var importError: String?
 
     var body: some View {
         NavigationStack {
@@ -42,12 +47,49 @@ struct DeckListView: View {
                 }
             }
             .toolbar {
-                Button {
-                    createName = "新牌組 \(decks.count + 1)"
-                    showCreateAlert = true
+                Menu {
+                    Button {
+                        createName = "新牌組 \(decks.count + 1)"
+                        showCreateAlert = true
+                    } label: {
+                        Label("新增空牌組", systemImage: "plus")
+                    }
+                    Divider()
+                    Button {
+                        showFileImporter = true
+                    } label: {
+                        Label("從檔案匯入", systemImage: "folder")
+                    }
+                    Button {
+                        pastedText = ""
+                        showPasteSheet = true
+                    } label: {
+                        Label("貼上牌表文字匯入", systemImage: "doc.on.clipboard")
+                    }
                 } label: {
                     Image(systemName: "plus")
                 }
+            }
+            .fileImporter(isPresented: $showFileImporter,
+                          allowedContentTypes: [.json, .plainText, .text]) { result in
+                handleFileImport(result)
+            }
+            .sheet(isPresented: $showPasteSheet) { pasteSheet }
+            .alert("匯入完成", isPresented: .init(
+                get: { importResult != nil },
+                set: { if !$0 { importResult = nil } })) {
+                Button("好") {}
+            } message: {
+                if let result = importResult {
+                    Text(importMessage(result))
+                }
+            }
+            .alert("匯入失敗", isPresented: .init(
+                get: { importError != nil },
+                set: { if !$0 { importError = nil } })) {
+                Button("好") {}
+            } message: {
+                Text(importError ?? "")
             }
             .alert("新增牌組", isPresented: $showCreateAlert) {
                 TextField("牌組名稱", text: $createName)
@@ -160,6 +202,84 @@ struct DeckListView: View {
         case .red: .red
         case .blue: .blue
         }
+    }
+
+    // MARK: - 匯入
+
+    private var pasteSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("把匯出的牌表或 JSON 貼在這裡")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                TextEditor(text: $pastedText)
+                    .font(.callout.monospaced())
+                    .scrollContentBackground(.hidden)
+                    .background(Color(.secondarySystemBackground),
+                                in: RoundedRectangle(cornerRadius: 8))
+                Text("支援本 App 匯出的 JSON、簡潔版牌表、收牌清單。純文字牌表會以普卡刷版匯入。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .navigationTitle("貼上匯入")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { showPasteSheet = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("匯入") {
+                        showPasteSheet = false
+                        importText(pastedText)
+                    }
+                    .fontWeight(.bold)
+                    .disabled(pastedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func handleFileImport(_ result: Result<URL, Error>) {
+        switch result {
+        case .success(let url):
+            // 從「檔案」App 選來的檔案需要先取得存取權
+            let needsScope = url.startAccessingSecurityScopedResource()
+            defer { if needsScope { url.stopAccessingSecurityScopedResource() } }
+            do {
+                let text = try String(contentsOf: url, encoding: .utf8)
+                importText(text)
+            } catch {
+                importError = "無法讀取檔案：\(error.localizedDescription)"
+            }
+        case .failure(let error):
+            importError = error.localizedDescription
+        }
+    }
+
+    private func importText(_ text: String) {
+        do {
+            let parsed = try DeckImporter.parse(text)
+            let result = try DeckImporter.createDeck(
+                from: parsed, database: database,
+                existingNames: decks.map(\.name), context: context)
+            activeDeckUUID = result.deck.uuid.uuidString
+            importResult = result
+        } catch {
+            importError = error.localizedDescription
+        }
+    }
+
+    private func importMessage(_ result: DeckImporter.Result) -> String {
+        var lines = ["已建立「\(result.deck.name)」",
+                     "匯入 \(result.importedCards) 張（\(result.matchedKinds) 種）"]
+        if !result.skipped.isEmpty {
+            let shown = result.skipped.prefix(5).joined(separator: "、")
+            lines.append("略過 \(result.skipped.count) 個查不到的卡號：\(shown)"
+                         + (result.skipped.count > 5 ? "…" : ""))
+        }
+        return lines.joined(separator: "\n")
     }
 
     private func addDeck(named name: String) {

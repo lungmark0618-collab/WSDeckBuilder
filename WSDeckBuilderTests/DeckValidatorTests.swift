@@ -88,3 +88,92 @@ final class DeckValidatorTests: XCTestCase {
         XCTAssertFalse(result.climaxOK)
     }
 }
+
+// MARK: - 匯入解析（§4.4.5）
+
+final class DeckImporterTests: XCTestCase {
+
+    func testParseExportedJSON() throws {
+        let json = """
+        {
+          "entries": [
+            {"count": 2, "printingID": "BRD/W139-075"},
+            {"count": 1, "printingID": "BRD/W139-075S"}
+          ],
+          "exportedAt": "2026-07-30T00:00:00Z",
+          "name": "8門 棕色塵埃",
+          "note": "測試"
+        }
+        """
+        let parsed = try DeckImporter.parse(json)
+        XCTAssertEqual(parsed.name, "8門 棕色塵埃")
+        XCTAssertEqual(parsed.note, "測試")
+        XCTAssertEqual(parsed.entries.count, 2)
+        XCTAssertEqual(parsed.entries.first?.count, 2)
+    }
+
+    func testParseSimpleText() throws {
+        let text = """
+        【8門 棕色塵埃】
+        Lv0 (26)
+        4  BRD/W139-009  海灘的正義 米卡艾拉
+        4  BRD/W139-027  異鄉兔女郎 潔妮絲
+        CX (8)
+        8  BRD/W139-098  盛夏的射手
+        """
+        let parsed = try DeckImporter.parse(text)
+        XCTAssertEqual(parsed.name, "8門 棕色塵埃")
+        XCTAssertEqual(parsed.entries.count, 3)
+        XCTAssertEqual(parsed.entries.map(\.count), [4, 4, 8])
+    }
+
+    func testParseCollectorTextWithRarity() throws {
+        let text = """
+        【8門 棕色塵埃】收牌清單
+        2  BRD/W139-075     RR   海灘天使 泰蕾莎
+        1  BRD/W139-075S    SR   海灘天使 泰蕾莎
+        """
+        let parsed = try DeckImporter.parse(text)
+        XCTAssertEqual(parsed.name, "8門 棕色塵埃")
+        XCTAssertEqual(parsed.entries.count, 2)
+        XCTAssertEqual(parsed.entries[1].printingID, "BRD/W139-075S")
+    }
+
+    func testParseShortageTextSkipsSummary() throws {
+        let text = """
+        【新牌組 1】缺卡清單
+        缺1  BRD/W139-075     RR   海灘天使 泰蕾莎（已有1/2）
+        —— 合計缺 1 張
+        """
+        let parsed = try DeckImporter.parse(text)
+        XCTAssertEqual(parsed.entries.count, 1)
+        XCTAssertEqual(parsed.entries[0].count, 1)
+    }
+
+    /// 各種常見寫法：4 / 4x / 4. / 4、/ 卡號在前
+    func testParseLooseCountFormats() throws {
+        let text = """
+        4  BRD/W139-009
+        4x BRD/W139-027
+        2. BRD/W139-075S
+        3、BRD/W139-098
+        BRD/W139-100 x4
+        """
+        let parsed = try DeckImporter.parse(text)
+        XCTAssertEqual(parsed.entries.count, 5)
+        XCTAssertEqual(parsed.entries.map(\.count), [4, 4, 2, 3, 4])
+        XCTAssertEqual(parsed.entries[4].printingID, "BRD/W139-100")
+    }
+
+    func testUnreadableTextThrows() {
+        XCTAssertThrowsError(try DeckImporter.parse("這裡沒有任何卡號"))
+    }
+
+    func testUniqueNameAvoidsOverwrite() {
+        XCTAssertEqual(DeckImporter.uniqueName("我的牌", existing: []), "我的牌")
+        XCTAssertEqual(DeckImporter.uniqueName("我的牌", existing: ["我的牌"]), "我的牌 (2)")
+        XCTAssertEqual(DeckImporter.uniqueName("我的牌", existing: ["我的牌", "我的牌 (2)"]),
+                       "我的牌 (3)")
+        XCTAssertEqual(DeckImporter.uniqueName("  ", existing: []), "匯入的牌組")
+    }
+}

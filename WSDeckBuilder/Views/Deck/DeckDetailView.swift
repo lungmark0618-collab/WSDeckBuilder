@@ -293,9 +293,11 @@ struct DeckDetailView: View {
             ShareLink(item: CollectionStore.shortageText(deck: deck, shortages: shortages)) {
                 Label("匯出缺卡清單", systemImage: "cart")
             }
-            ShareLink(item: DeckExporter.json(deck: deck),
-                      preview: SharePreview("\(deck.name).json")) {
-                Label("匯出 JSON 備份", systemImage: "curlybraces")
+            if let url = DeckExporter.jsonFile(deck: deck) {
+                ShareLink(item: url,
+                          preview: SharePreview("\(deck.name).json")) {
+                    Label("匯出 JSON 備份（可再匯入）", systemImage: "curlybraces")
+                }
             }
         } label: {
             Image(systemName: "square.and.arrow.up")

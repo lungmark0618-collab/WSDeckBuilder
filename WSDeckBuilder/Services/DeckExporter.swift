@@ -55,6 +55,21 @@ enum DeckExporter {
         return (try? encoder.encode(export)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
     }
 
+    /// 寫成暫存 .json 檔並回傳位置，讓分享出去的是真正的 JSON 檔（可再匯入）
+    static func jsonFile(deck: Deck) -> URL? {
+        let safeName = deck.name
+            .components(separatedBy: CharacterSet(charactersIn: "/\\:?%*|\"<>"))
+            .joined(separator: "_")
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(safeName.isEmpty ? "deck" : safeName).json")
+        do {
+            try json(deck: deck).write(to: url, atomically: true, encoding: .utf8)
+            return url
+        } catch {
+            return nil
+        }
+    }
+
     // MARK: - Helpers
 
     struct CardCount {

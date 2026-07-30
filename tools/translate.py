@@ -22,7 +22,8 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-KANA = re.compile(r"[぀-ゟ゠-ヿー]")
+# 排除全形中點 U+30FB（・）：譯文的外文名分隔符會保留它，不算殘留日文
+KANA = re.compile("[぀-ゟ゠-ヺー-ヿ]")
 NUM = re.compile(r"\d+")
 MARKER = re.compile(r"【[^】]*】")
 TRAIT_REF = re.compile(r"《[^》]*》")

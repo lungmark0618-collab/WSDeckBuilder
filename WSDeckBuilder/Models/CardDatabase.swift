@@ -132,9 +132,65 @@ final class CardDatabase {
         }
     }
 
+    /// 關鍵字指名的作品（卡片本身不含作品名，得另外比對 meta）
+    func titleCodes(matching keyword: String) -> Set<String> {
+        let lower = keyword.trimmingCharacters(in: .whitespaces).lowercased()
+        // 太短會配到一堆作品，反而干擾一般的卡名搜尋
+        guard lower.count >= 2 else { return [] }
+        var codes: Set<String> = []
+        for set in sets {
+            // titleCode 可能是 "BRD/W139"，使用者只會打前綴 "BRD"
+            let prefix = set.titleCode.split(separator: "/").first.map(String.init)
+                ?? set.titleCode
+            if set.titleNameZH.lowercased().contains(lower)
+                || set.titleNameJP.lowercased().contains(lower)
+                || prefix.lowercased().hasPrefix(lower)
+                || set.titleCode.lowercased().hasPrefix(lower) {
+                codes.insert(set.titleCode)
+            }
+        }
+        return codes
+    }
+
+    /// 疑似在找某個作品時給的選項；打錯字也照原樣保留使用者的輸入
+    func suggestions(for keyword: String) -> [SearchSuggestion] {
+        let trimmed = keyword.trimmingCharacters(in: .whitespaces)
+        guard trimmed.count >= 2 else { return [] }
+        let exact = titleCodes(matching: trimmed)
+
+        var result: [SearchSuggestion] = []
+        for set in sets {
+            let prefix = set.titleCode.split(separator: "/").first.map(String.init)
+                ?? set.titleCode
+            let reason: SearchSuggestion.Reason?
+            if exact.contains(set.titleCode) {
+                reason = .exact
+            } else if FuzzyMatch.isTypo(trimmed, of: prefix) {
+                reason = .typo(matched: prefix)
+            } else if FuzzyMatch.isTypo(trimmed, of: set.titleNameZH) {
+                reason = .typo(matched: set.titleNameZH)
+            } else {
+                reason = nil
+            }
+            guard let reason else { continue }
+            result.append(SearchSuggestion(titleCode: set.titleCode,
+                                           titleName: set.titleNameZH,
+                                           cardCount: cardCount(inTitle: set.titleCode),
+                                           reason: reason))
+        }
+        // 精確的排前面，其次卡多的作品
+        return result.sorted { a, b in
+            let ea = a.isExact ? 0 : 1, eb = b.isExact ? 0 : 1
+            if ea != eb { return ea < eb }
+            return a.cardCount > b.cardCount
+        }
+    }
+
     /// §4.4.1：多個篩選條件之間是 AND，同一篩選內的多選是 OR
     func search(_ query: SearchQuery) -> [Card] {
-        cards.filter { card in
+        let keywordTitles = titleCodes(
+            matching: query.keyword.trimmingCharacters(in: .whitespaces))
+        return cards.filter { card in
             if let title = query.titleCode,
                titleByCardID[card.id] != title { return false }
             if !query.levels.isEmpty {
@@ -151,6 +207,9 @@ final class CardDatabase {
 
             let keyword = query.keyword.trimmingCharacters(in: .whitespaces)
             guard !keyword.isEmpty else { return true }
+            // 打作品名（「棕色塵埃2」）時卡名比不到，改讓整個系列命中
+            if !keywordTitles.isEmpty,
+               keywordTitles.contains(titleByCardID[card.id] ?? "") { return true }
             let lower = keyword.lowercased()
             let normalized = SearchQuery.normalizeCardNumber(keyword)
             if !normalized.isEmpty,

@@ -60,7 +60,10 @@ struct CardBrowserView: View {
                 }
             }
             .safeAreaInset(edge: .top, spacing: 0) {
-                ActiveDeckPicker(decks: decks, activeDeckUUID: $activeDeckUUID)
+                VStack(spacing: 0) {
+                    ActiveDeckPicker(decks: decks, activeDeckUUID: $activeDeckUUID)
+                    suggestionBar
+                }
             }
             .sheet(isPresented: $showFilter) {
                 FilterSheet(query: $query)
@@ -78,6 +81,70 @@ struct CardBrowserView: View {
                     ContentUnavailableView.search
                 }
             }
+        }
+    }
+
+    // MARK: - 搜尋建議（只給選項，不改使用者打的字）
+
+    private var suggestions: [SearchSuggestion] {
+        // 已經鎖定作品了就不用再建議切過去
+        guard query.titleCode == nil else { return [] }
+        return database.suggestions(for: query.keyword)
+    }
+
+    @ViewBuilder
+    private var suggestionBar: some View {
+        let items = suggestions
+        if !items.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(items) { item in
+                        Button {
+                            // 切到該作品，關鍵字清掉才看得到整個系列
+                            withAnimation {
+                                query.titleCode = item.titleCode
+                                query.keyword = ""
+                            }
+                        } label: {
+                            suggestionChip(item)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 7)
+            }
+            .background(.bar)
+            .overlay(alignment: .bottom) { Divider() }
+        }
+    }
+
+    private func suggestionChip(_ item: SearchSuggestion) -> some View {
+        HStack(spacing: 5) {
+            switch item.reason {
+            case .exact:
+                Image(systemName: "square.stack.3d.up.fill")
+                Text("看整個「\(item.titleName)」")
+            case .typo(let matched):
+                Image(systemName: "sparkle.magnifyingglass")
+                // 只給代號看不出是哪部作品，兩個都寫
+                Text(matched == item.titleName
+                     ? "你是不是要找「\(item.titleName)」？"
+                     : "你是不是要找「\(item.titleName)」\(matched)？")
+            }
+            Text("\(item.cardCount)")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.secondary)
+        }
+        .font(.caption.weight(.medium))
+        .padding(.horizontal, 11)
+        .padding(.vertical, 6)
+        .background(item.isExact ? Color.accentColor.opacity(0.16)
+                                 : Color(.tertiarySystemFill),
+                    in: Capsule())
+        .overlay {
+            Capsule().strokeBorder(item.isExact ? Color.accentColor.opacity(0.4)
+                                                : .clear, lineWidth: 1)
         }
     }
 

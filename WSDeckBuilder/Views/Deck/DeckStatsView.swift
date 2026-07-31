@@ -37,18 +37,22 @@ struct DeckStatsView: View {
         return LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()),
                                    GridItem(.flexible()), GridItem(.flexible())],
                          spacing: 10) {
-            statTile("總張數", "\(items.reduce(0) { $0 + $1.count })", "square.stack.3d.up")
-            statTile("平均費用", avgCost, "diamond")
-            statTile("平均攻擊", avgPower, "bolt")
-            statTile("總魂傷", "\(totalSoul)", "flame")
+            statTile("總張數", "\(items.reduce(0) { $0 + $1.count })",
+                     "square.stack.3d.up", .accentColor)
+            statTile("平均費用", avgCost, "diamond", .orange)
+            statTile("平均攻擊", avgPower, "bolt", .blue)
+            statTile("總魂傷", "\(totalSoul)", "flame", .purple)
         }
     }
 
-    private func statTile(_ title: String, _ value: String, _ symbol: String) -> some View {
-        VStack(spacing: 4) {
+    private func statTile(_ title: String, _ value: String,
+                          _ symbol: String, _ tint: Color) -> some View {
+        VStack(spacing: 5) {
             Image(systemName: symbol)
-                .font(.caption)
-                .foregroundStyle(.tint)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(tint)
+                .frame(width: 26, height: 26)
+                .background(tint.opacity(0.16), in: Circle())
             Text(value)
                 .font(.title3.monospacedDigit().bold())
                 .minimumScaleFactor(0.6)
@@ -58,18 +62,38 @@ struct DeckStatsView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .padding(.vertical, 13)
+        .background {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(.thinMaterial)
+            // 每塊各帶一點自己的色溫，四格才不會糊成一片灰
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(LinearGradient(colors: [tint.opacity(0.14), tint.opacity(0.02)],
+                                     startPoint: .top, endPoint: .bottom))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(tint.opacity(0.22), lineWidth: 1)
+        }
     }
 
     private func section(_ title: String,
                          @ViewBuilder chart: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.headline)
+            Text(title)
+                .font(.headline)
             chart()
-                .padding(12)
+                .padding(14)
                 .frame(maxWidth: .infinity)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .background {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(.thinMaterial)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(0.06), radius: 6, y: 3)
         }
     }
 

@@ -95,27 +95,58 @@ struct DeckDetailView: View {
     // MARK: - 規則驗證列（§4.4.3）
 
     private var validationHeader: some View {
-        HStack(spacing: 14) {
-            Label("\(validation.totalCount)/50",
-                  systemImage: validation.totalOK ? "checkmark.circle.fill" : "xmark.circle")
-                .foregroundStyle(validation.totalOK ? .green : .red)
-            Label("CX \(validation.climaxCount)/8",
-                  systemImage: validation.climaxOK ? "checkmark.circle.fill" : "xmark.circle")
-                .foregroundStyle(validation.climaxOK ? .green : .red)
+        HStack(spacing: 8) {
+            ruleChip("\(validation.totalCount)/50", ok: validation.totalOK)
+            ruleChip("CX \(validation.climaxCount)/8", ok: validation.climaxOK)
             if !validation.namesOK {
-                Label("同名超過4張", systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
+                ruleChip("同名超過4張", ok: false, symbol: "exclamationmark.triangle.fill")
             }
             if validation.mixedTitles {
-                Label("跨作品混搭", systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
+                ruleChip("跨作品混搭", ok: false, symbol: "exclamationmark.triangle.fill",
+                         tint: .orange)
             }
-            Spacer()
+            Spacer(minLength: 0)
+            if validation.isLegal {
+                Label("合法", systemImage: "checkmark.seal.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.green)
+                    .shadow(color: .black.opacity(0.5), radius: 2)
+            }
         }
-        .font(.caption.monospacedDigit())
         .padding(.horizontal)
-        .padding(.vertical, 6)
-        .background(.bar)
+        .padding(.vertical, 9)
+        .background {
+            ZStack {
+                Color(.secondarySystemBackground)
+                CardArtBackdrop(printing: deck.coverPrinting(database: database),
+                                blur: 20, opacity: 1, saturation: 2.0)
+                LinearGradient(colors: [.black.opacity(0.55), .black.opacity(0.4)],
+                               startPoint: .top, endPoint: .bottom)
+            }
+            .clipped()
+        }
+        .overlay(alignment: .bottom) {
+            Divider().opacity(0.4)
+        }
+    }
+
+    /// 深色背景上的規則標籤
+    private func ruleChip(_ text: String, ok: Bool,
+                          symbol: String? = nil, tint: Color = .red) -> some View {
+        HStack(spacing: 4) {
+            if let symbol {
+                Image(systemName: symbol).font(.caption2)
+            }
+            Text(text)
+        }
+        .font(.caption.monospacedDigit().weight(.semibold))
+        .foregroundStyle(ok ? .green : (symbol == nil ? .white : tint))
+        .padding(.horizontal, 9)
+        .padding(.vertical, 4)
+        .background(.black.opacity(0.32), in: Capsule())
+        .overlay {
+            Capsule().strokeBorder(.white.opacity(0.16), lineWidth: 0.5)
+        }
     }
 
     // MARK: - 圖片網格（依等級分區，含張數徽章與快速增減）

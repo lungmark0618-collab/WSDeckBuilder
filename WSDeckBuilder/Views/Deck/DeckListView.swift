@@ -22,9 +22,15 @@ struct DeckListView: View {
         NavigationStack {
             List {
                 ForEach(decks) { deck in
-                    NavigationLink(value: deck.uuid) {
+                    ZStack {
+                        // NavigationLink 的預設樣式會壓過自訂卡片，藏起來只留行為
+                        NavigationLink(value: deck.uuid) { EmptyView() }
+                            .opacity(0)
                         row(deck)
                     }
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             delete(deck)
@@ -40,6 +46,7 @@ struct DeckListView: View {
                     }
                 }
             }
+            .listStyle(.plain)
             .navigationTitle("牌組")
             .navigationDestination(for: UUID.self) { uuid in
                 if let deck = decks.first(where: { $0.uuid == uuid }) {
@@ -129,37 +136,40 @@ struct DeckListView: View {
         let result = DeckValidator.validate(items)
         let cover = deck.coverPrinting(database: database)
         let isActive = deck.uuid.uuidString == activeDeckUUID
-        return HStack(spacing: 13) {
+
+        return HStack(spacing: 14) {
             // 封面：卡片本身就是最好的識別，給它足夠份量
             Group {
                 if let cover {
                     CardImageView(printing: cover, cardName: deck.name)
-                        .frame(width: 58)
+                        .frame(width: 66)
                 } else {
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(Color(.tertiarySystemFill))
-                        .frame(width: 58, height: 81)
+                        .fill(.ultraThinMaterial)
+                        .frame(width: 66, height: 92)
                         .overlay {
                             Image(systemName: "rectangle.stack")
-                                .font(.title3)
-                                .foregroundStyle(.tertiary)
+                                .font(.title2)
+                                .foregroundStyle(.white.opacity(0.5))
                         }
                 }
             }
-            .shadow(color: .black.opacity(0.18), radius: 3, x: 0, y: 2)
+            .shadow(color: .black.opacity(0.45), radius: 7, x: 0, y: 4)
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Text(deck.name)
                         .font(.headline)
+                        .foregroundStyle(.white)
                         .lineLimit(1)
+                        .shadow(color: .black.opacity(0.5), radius: 2, y: 1)
                     if isActive {
                         Text("編輯中")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(Color.accentColor)
-                            .padding(.horizontal, 6)
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.black.opacity(0.75))
+                            .padding(.horizontal, 7)
                             .padding(.vertical, 2)
-                            .background(Color.accentColor.opacity(0.15), in: Capsule())
+                            .background(.white.opacity(0.9), in: Capsule())
                     }
                 }
 
@@ -167,29 +177,70 @@ struct DeckListView: View {
                 if let title = titleName(for: deck) {
                     Text(title)
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white.opacity(0.75))
                         .lineLimit(1)
                 }
 
-                HStack(spacing: 8) {
-                    Text("\(result.totalCount)/50")
-                        .foregroundStyle(result.totalOK ? .green : .secondary)
-                    Text("CX \(result.climaxCount)/8")
-                        .foregroundStyle(result.climaxOK ? .green : .secondary)
+                HStack(spacing: 6) {
+                    statusChip("\(result.totalCount)/50", ok: result.totalOK)
+                    statusChip("CX \(result.climaxCount)/8", ok: result.climaxOK)
                     if result.isLegal {
                         Image(systemName: "checkmark.seal.fill")
+                            .font(.caption)
                             .foregroundStyle(.green)
+                            .shadow(color: .black.opacity(0.4), radius: 2)
                     } else if !result.namesOK {
                         Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption)
                             .foregroundStyle(.orange)
+                            .shadow(color: .black.opacity(0.4), radius: 2)
                     }
                 }
-                .font(.caption.monospacedDigit())
 
                 colorBar(for: deck, total: result.totalCount)
+                    .padding(.top, 1)
+            }
+            Spacer(minLength: 0)
+
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.5))
+        }
+        .padding(14)
+        .background {
+            ZStack {
+                // 底色先鋪滿，卡圖載入前後都不會露出空白
+                Color(.secondarySystemBackground)
+                CardArtBackdrop(printing: cover, blur: 22, opacity: 1, saturation: 2.1)
+                // 文字那側壓深，右側留亮，白字讀得清楚又保得住卡面色調
+                LinearGradient(stops: [
+                    .init(color: .black.opacity(0.62), location: 0),
+                    .init(color: .black.opacity(0.45), location: 0.55),
+                    .init(color: .black.opacity(0.22), location: 1),
+                ], startPoint: .leading, endPoint: .trailing)
             }
         }
-        .padding(.vertical, 6)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(isActive ? Color.accentColor.opacity(0.9)
+                                       : .white.opacity(0.12),
+                              lineWidth: isActive ? 2 : 1)
+        }
+        .shadow(color: .black.opacity(0.18), radius: 8, x: 0, y: 4)
+    }
+
+    /// 深色卡面上的狀態標籤：達標亮綠，未達標維持中性
+    private func statusChip(_ text: String, ok: Bool) -> some View {
+        Text(text)
+            .font(.caption2.monospacedDigit().weight(.semibold))
+            .foregroundStyle(ok ? .green : .white.opacity(0.9))
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(.black.opacity(0.28), in: Capsule())
+            .overlay {
+                Capsule().strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
+            }
     }
 
     /// 牌組主要作品（取張數最多的），空牌組回傳 nil
@@ -221,20 +272,21 @@ struct DeckListView: View {
         return GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color(.tertiarySystemFill))
-                HStack(spacing: 1) {
+                    .fill(.black.opacity(0.35))
+                HStack(spacing: 1.5) {
                     ForEach(CardColor.allCases) { color in
                         if let count = counts[color], count > 0 {
                             Capsule()
-                                .fill(swiftUIColor(color))
-                                .frame(width: geo.size.width * filled
-                                       * CGFloat(count) / CGFloat(colorTotal))
+                                .fill(swiftUIColor(color).gradient)
+                                .frame(width: max(geo.size.width * filled
+                                       * CGFloat(count) / CGFloat(colorTotal) - 1.5, 2))
                         }
                     }
                 }
+                .shadow(color: .black.opacity(0.3), radius: 1, y: 1)
             }
         }
-        .frame(height: 6)
+        .frame(height: 7)
         .opacity(deck.entries.isEmpty ? 0 : 1)
     }
 

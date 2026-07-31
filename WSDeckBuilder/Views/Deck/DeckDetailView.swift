@@ -12,6 +12,8 @@ struct DeckDetailView: View {
     @State private var detailCard: Card?
     @State private var isEditing = false
     @State private var isPickingCover = false
+    /// 缺卡頁是否連已收齊的一起顯示
+    @State private var showCollected = false
     /// 卡表的顯示方式（與圖鑑分頁各自記憶）
     @AppStorage("deckUsesGrid") private var usesGrid = true
 
@@ -286,8 +288,9 @@ struct DeckDetailView: View {
     // MARK: - 缺卡清單（對照「我的收藏」算出還要收哪些）
 
     private var shortageList: some View {
-        let items = shortages
-        let total = items.reduce(0) { $0 + $1.missing }
+        // 收齊的卡會從缺卡清單消失，開著這個才改得回來（例如標錯了）
+        let items = showCollected ? allTrackedItems : shortages
+        let total = shortages.reduce(0) { $0 + $1.missing }
         return List {
             if items.isEmpty {
                 ContentUnavailableView("這副牌都收齊了",
@@ -297,40 +300,115 @@ struct DeckDetailView: View {
             } else {
                 Section {
                     ForEach(items) { item in
-                        HStack(spacing: 10) {
-                            CardImageView(printing: item.printing,
-                                          cardName: item.card.nameZH,
-                                          landscape: item.card.cardType == .climax)
-                                .frame(width: item.card.cardType == .climax ? 64 : 46)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.card.nameZH).font(.callout).lineLimit(1)
-                                HStack(spacing: 6) {
-                                    Text(item.printing.rarity).font(.caption2.bold())
-                                    Text(item.printing.id).font(.caption2.monospaced())
-                                }
-                                .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("缺 \(item.missing)")
-                                    .font(.callout.monospacedDigit().bold())
-                                    .foregroundStyle(.red)
-                                Text("\(item.owned)/\(item.needed)")
-                                    .font(.caption2.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture { detailCard = item.card }
+                        shortageRow(item)
                     }
                 } header: {
-                    Text("還缺 \(total) 張（共 \(items.count) 種）")
+                    HStack {
+                        Text(total > 0 ? "還缺 \(total) 張（共 \(shortages.count) 種）"
+                                       : "都收齊了")
+                        Spacer()
+                        Button(showCollected ? "只看缺的" : "顯示全部") {
+                            withAnimation { showCollected.toggle() }
+                        }
+                        .font(.caption)
+                        .textCase(nil)
+                    }
                 } footer: {
-                    Text("依「我的收藏」記錄計算。到卡片詳情頁的「我的收藏」可調整擁有張數。")
+                    Text("直接在這裡按＋標記入手，或往左滑一次收齊整組。數量記在「我的收藏」，"
+                         + "其他牌組共用。")
                 }
             }
         }
         .listStyle(.insetGrouped)
+        .toolbar {
+            if mode == .shortage, !shortages.isEmpty {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("全部收齊") { fillAll() }
+                        .font(.caption)
+                }
+            }
+        }
+    }
+
+    /// 牌組內每個刷版的收藏進度（含已收齊的），供「顯示全部」使用
+    private var allTrackedItems: [CollectionStore.Shortage] {
+        let index = CollectionStore.index(collection)
+        return deck.entries
+            .compactMap { entry -> CollectionStore.Shortage? in
+                guard let card = database.card(forPrinting: entry.printingID),
+                      let printing = database.printing(id: entry.printingID) else { return nil }
+                return CollectionStore.Shortage(printing: printing, card: card,
+                                                needed: entry.count,
+                                                owned: index[entry.printingID] ?? 0)
+            }
+            .sorted { $0.printing.id < $1.printing.id }
+    }
+
+    private func shortageRow(_ item: CollectionStore.Shortage) -> some View {
+        let done = item.missing == 0
+        return HStack(spacing: 10) {
+            CardImageView(printing: item.printing,
+                          cardName: item.card.nameZH,
+                          landscape: item.card.cardType == .climax)
+                .frame(width: item.card.cardType == .climax ? 60 : 42)
+                .opacity(done ? 0.45 : 1)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.card.nameZH)
+                    .font(.callout)
+                    .lineLimit(1)
+                    .foregroundStyle(done ? .secondary : .primary)
+                HStack(spacing: 6) {
+                    Text(item.printing.rarity).font(.caption2.bold())
+                    Text(item.printing.id).font(.caption2.monospaced())
+                }
+                .foregroundStyle(.secondary)
+                if done {
+                    Label("已收齊", systemImage: "checkmark.circle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.green)
+                } else {
+                    Text("還缺 \(item.missing)")
+                        .font(.caption.monospacedDigit().bold())
+                        .foregroundStyle(.red)
+                }
+            }
+            Spacer(minLength: 4)
+
+            // 就地加減，不用再進詳情頁
+            VStack(spacing: 2) {
+                CountStepper(count: item.owned) { delta in
+                    CollectionStore.adjust(printingID: item.printing.id, by: delta,
+                                           entries: collection, context: context)
+                }
+                Text("\(item.owned)/\(item.needed)")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { detailCard = item.card }
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            if !done {
+                Button {
+                    fill(item)
+                } label: {
+                    Label("一次收齊", systemImage: "checkmark.circle.fill")
+                }
+                .tint(.green)
+            }
+        }
+    }
+
+    /// 把某張補到牌組需要的張數
+    private func fill(_ item: CollectionStore.Shortage) {
+        guard item.missing > 0 else { return }
+        CollectionStore.adjust(printingID: item.printing.id, by: item.missing,
+                               entries: collection, context: context)
+    }
+
+    private func fillAll() {
+        for item in shortages { fill(item) }
     }
 
     // MARK: - 牌組操作＋匯出（§4.4.5，ShareLink）

@@ -85,7 +85,8 @@ struct DeckDetailView: View {
             }
         }
         .sheet(item: $detailCard) { card in
-            CardDetailSheet(card: card, deck: deck)
+            // 依畫面上的分區順序帶入，滑動順序才跟看到的一致
+            CardDetailSheet(card: card, siblings: orderedCards, deck: deck)
         }
         .sheet(isPresented: $isPickingCover) {
             DeckCoverPickerView(deck: deck)
@@ -107,7 +108,7 @@ struct DeckDetailView: View {
             }
             Spacer(minLength: 0)
             if validation.isLegal {
-                Label("合法", systemImage: "checkmark.seal.fill")
+                Label("符合規則", systemImage: "checkmark.seal.fill")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.green)
                     .shadow(color: .black.opacity(0.5), radius: 2)
@@ -255,6 +256,11 @@ struct DeckDetailView: View {
                     : nil
             }
         }
+    }
+
+    /// 卡表分區攤平成一串，供詳情頁左右滑動
+    private var orderedCards: [Card] {
+        sections.flatMap { $0.items.map(\.card) }
     }
 
     private var sections: [LevelSection] {

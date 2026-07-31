@@ -5,22 +5,51 @@ import SwiftUI
 /// 關聯卡片（羈絆／CX連動指名）可直接推進去看
 struct CardDetailSheet: View {
     let card: Card
+    /// 同一批可左右滑動切換的卡片（搜尋結果或牌組卡表）；未提供則只顯示這一張
+    var siblings: [Card] = []
     var deck: Deck?
 
     @Environment(\.dismiss) private var dismiss
+    @State private var selection: String = ""
+
+    /// 開啟的卡必須在清單內，否則滑動會找不到起點
+    private var pages: [Card] {
+        siblings.count > 1 && siblings.contains { $0.id == card.id } ? siblings : [card]
+    }
+
+    private var currentIndex: Int? {
+        pages.firstIndex { $0.id == selection }
+    }
 
     var body: some View {
         NavigationStack {
-            CardDetailContent(card: card, deck: deck)
-                .navigationDestination(for: Card.self) { related in
-                    CardDetailContent(card: related, deck: deck)
-                }
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("完成") { dismiss() }
+            Group {
+                if pages.count > 1 {
+                    TabView(selection: $selection) {
+                        ForEach(Array(pages.enumerated()), id: \.element.id) { index, page in
+                            CardDetailContent(
+                                card: page, deck: deck,
+                                // 用 String 組字串，插值會自動加千分位
+                                positionLabel: String(index + 1) + " / "
+                                             + String(pages.count))
+                                .tag(page.id)
+                        }
                     }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                } else {
+                    CardDetailContent(card: card, deck: deck)
                 }
+            }
+            .navigationDestination(for: Card.self) { related in
+                CardDetailContent(card: related, deck: deck)
+            }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { dismiss() }
+                }
+            }
         }
+        .onAppear { if selection.isEmpty { selection = card.id } }
     }
 }
 
@@ -28,6 +57,8 @@ struct CardDetailSheet: View {
 struct CardDetailContent: View {
     let card: Card
     var deck: Deck?
+    /// 「3 / 26」這種位置提示；可左右滑動時才給
+    var positionLabel: String?
 
     @Environment(CardDatabase.self) private var database
     @Environment(\.modelContext) private var context
@@ -43,13 +74,25 @@ struct CardDetailContent: View {
     var body: some View {
         ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    if let positionLabel {
+                        // 卡圖上方的空白處，既提示可滑動又不擋任何內容
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.compact.left")
+                            Text(positionLabel).monospacedDigit()
+                            Image(systemName: "chevron.compact.right")
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity)
+                    }
+
                     CardImageView(printing: selectedPrinting, cardName: card.nameZH,
                                   landscape: card.cardType == .climax,
                                   animatedFoil: true)
                         .frame(maxWidth: card.cardType == .climax ? 360 : 280)
                         .cardTilt()
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
+                        .padding(.bottom, 6)
 
                     if card.printings.count > 1 {
                         Picker("刷版", selection: $selectedPrintingID) {

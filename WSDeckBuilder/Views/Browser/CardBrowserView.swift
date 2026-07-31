@@ -70,7 +70,8 @@ struct CardBrowserView: View {
                 appearance.currentTitleCode = query.titleCode ?? ""
             }
             .sheet(item: $detailCard) { card in
-                CardDetailSheet(card: card, deck: activeDeck)
+                // 帶著搜尋結果進去，詳情頁就能左右滑看下一張
+                CardDetailSheet(card: card, siblings: results, deck: activeDeck)
             }
             .overlay {
                 if results.isEmpty {

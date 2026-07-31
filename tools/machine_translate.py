@@ -863,8 +863,14 @@ def translate_name(name, chars, words, names):
     if name in names:
         return names[name]
     text = name
+    # 角色譯名換成私有區的單一字元佔位，等其他規則跑完再還原。
+    # 否則後續詞彙規則會咬進譯名裡——「夢→夢想」就曾把「七詩夢命」
+    # 變成「七詩夢想命」。佔位字元不在任何規則的比對範圍內。
+    holds = []
     for jp, zh in sorted(chars.items(), key=lambda kv: -len(kv[0])):
-        text = text.replace(jp, zh)
+        if jp in text:
+            text = text.replace(jp, chr(0xE000 + len(holds)))
+            holds.append(zh)
     merged = dict(JP_WORDS)
     merged.update(words)
     if merged:
@@ -875,7 +881,10 @@ def translate_name(name, chars, words, names):
     text = text.replace("たち", "們").replace("ちゃん", "").replace("さん", "")
     if KANA.search(text):
         return None                      # 仍有假名 → 整個卡名保留日文
-    return text.translate(SHINJITAI)     # 新字體轉正體
+    text = text.translate(SHINJITAI)     # 新字體轉正體
+    for i, zh in enumerate(holds):
+        text = text.replace(chr(0xE000 + i), zh)
+    return text
 
 
 def translate_card_text(text, names, traits):

@@ -13,6 +13,7 @@ translate_helper.py — 能力文字補翻的固定流程工具
   python3 translate_helper.py dump  <key> [start] [count]   # 列出未翻譯的文字
   python3 translate_helper.py check <key> <譯文.json>        # 只驗證不寫檔
   python3 translate_helper.py apply <key> <譯文.json>        # 驗證並產生覆寫檔
+  python3 translate_helper.py names <key>                   # 交叉驗證角色譯名
 """
 import json
 import os
@@ -79,6 +80,35 @@ def verify(trans):
     return problems
 
 
+def cmd_names(key):
+    """交叉驗證：日文卡名含某角色時，中文卡名就該出現對應譯名。
+
+    literal 覆寫（names）是逐條寫死的，改角色字典時很容易漏掉它們——
+    賽馬娘就發生過兩隻馬的譯名互換卻只改了字典的情況。
+    """
+    extra = json.load(open(f"{HERE}/translations/names_extra.json", encoding="utf-8"))
+    chars = extra.get("characters_by_set", {}).get(key, {})
+    if not chars:
+        print(f"{key} 沒有專屬角色字典，略過")
+        return 0
+    cards = json.load(open(f"{HERE}/sets/{key}_cards.json", encoding="utf-8"))["cards"]
+    bad, seen = [], set()
+    for c in cards:
+        jp, zh = c["name_jp"], c["name_zh"]
+        if zh == jp or jp in seen:
+            continue
+        seen.add(jp)
+        # 取最長匹配，避免アグネスタキオン被アグネス…之類的短鍵搶走
+        hit = max((k for k in chars if k in jp), key=len, default=None)
+        if hit and chars[hit] not in zh:
+            bad.append((c["id"], jp, zh, hit, chars[hit]))
+    for cid, jp, zh, k, want in bad:
+        print(f"  {cid:16} {jp[:26]:28} -> {zh:24} 應含「{want}」({k})")
+    print(f"{key}：{len(bad)} 張角色名對不上"
+          f"（部分可能是誤報，例如角色名同時是普通名詞）")
+    return 1 if bad else 0
+
+
 def cmd_check(key, path):
     trans = json.load(open(path, encoding="utf-8"))
     todo = {jp for _, jp in pending(key)}
@@ -128,6 +158,8 @@ if __name__ == "__main__":
         sys.exit(cmd_check(key, sys.argv[3]))
     elif cmd == "apply":
         sys.exit(cmd_apply(key, sys.argv[3]))
+    elif cmd == "names":
+        sys.exit(cmd_names(key))
     else:
         print(__doc__)
         sys.exit(2)

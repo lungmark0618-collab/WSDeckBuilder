@@ -12,6 +12,8 @@ struct CardBrowserView: View {
     @State private var query = SearchQuery()
     @State private var showFilter = false
     @State private var detailCard: Card?
+    /// 套用建議時也會清空關鍵字，別把它誤判成使用者按了清除鈕
+    @State private var isApplyingSuggestion = false
 
     private var activeDeck: Deck? {
         decks.first { $0.uuid.uuidString == activeDeckUUID }
@@ -62,6 +64,7 @@ struct CardBrowserView: View {
             .safeAreaInset(edge: .top, spacing: 0) {
                 VStack(spacing: 0) {
                     ActiveDeckPicker(decks: decks, activeDeckUUID: $activeDeckUUID)
+                    activeFilterBar
                     suggestionBar
                 }
             }
@@ -71,6 +74,17 @@ struct CardBrowserView: View {
             // 強調色跟著目前瀏覽的作品
             .onChange(of: query.titleCode, initial: true) {
                 appearance.currentTitleCode = query.titleCode ?? ""
+            }
+            // 搜尋欄的清除鈕只會清關鍵字，但使用者的意思是「重來」，
+            // 篩選（多半是點建議帶上的）留著會讓結果看起來還是不對
+            .onChange(of: query.keyword) { old, new in
+                guard !isApplyingSuggestion else {
+                    isApplyingSuggestion = false
+                    return
+                }
+                if !old.isEmpty, new.isEmpty, query.hasActiveFilters {
+                    withAnimation { query = SearchQuery() }
+                }
             }
             .sheet(item: $detailCard) { card in
                 // 帶著搜尋結果進去，詳情頁就能左右滑看下一張
@@ -82,6 +96,57 @@ struct CardBrowserView: View {
                 }
             }
         }
+    }
+
+    // MARK: - 作用中的篩選（讓人知道結果為何被縮小，並能一鍵解除）
+
+    @ViewBuilder
+    private var activeFilterBar: some View {
+        if query.hasActiveFilters {
+            HStack(spacing: 8) {
+                Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                    .foregroundStyle(.tint)
+                Text(filterSummary)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                Button {
+                    withAnimation { query = SearchQuery() }
+                } label: {
+                    Label("清除", systemImage: "xmark.circle.fill")
+                        .labelStyle(.titleAndIcon)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
+            .font(.caption)
+            .padding(.horizontal)
+            .padding(.vertical, 7)
+            .background(.bar)
+            .overlay(alignment: .bottom) { Divider() }
+        }
+    }
+
+    private var filterSummary: String {
+        var parts: [String] = []
+        if let code = query.titleCode {
+            parts.append(database.sets.first { $0.titleCode == code }?.titleNameZH ?? code)
+        }
+        if !query.levels.isEmpty {
+            parts.append("Lv" + query.levels.sorted().map(String.init).joined(separator: "/"))
+        }
+        if !query.colors.isEmpty {
+            parts.append(query.colors.map(\.label).joined(separator: "/"))
+        }
+        if !query.types.isEmpty {
+            parts.append(query.types.map(\.label).joined(separator: "/"))
+        }
+        if !query.triggers.isEmpty { parts.append("判定×\(query.triggers.count)") }
+        if !query.traits.isEmpty {
+            parts.append(query.traits.sorted().joined(separator: "/"))
+        }
+        if let source = query.sourceOnly { parts.append(source.label) }
+        if query.ownership != .all { parts.append(query.ownership.label) }
+        return parts.joined(separator: " · ")
     }
 
     // MARK: - 搜尋建議（只給選項，不改使用者打的字）
@@ -101,6 +166,7 @@ struct CardBrowserView: View {
                     ForEach(items) { item in
                         Button {
                             // 切到該作品，關鍵字清掉才看得到整個系列
+                            isApplyingSuggestion = true
                             withAnimation {
                                 query.titleCode = item.titleCode
                                 query.keyword = ""

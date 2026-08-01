@@ -155,12 +155,6 @@ struct CardDetailContent: View {
                         if appearance.showJapanese {
                             abilitySection(title: "原文（日文）", lines: card.textLinesJP)
                         }
-                        if card.translationStatus == .machine {
-                            Label("此卡翻譯尚未人工校對",
-                                  systemImage: "exclamationmark.triangle")
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                        }
                     }
 
                     relationsSection

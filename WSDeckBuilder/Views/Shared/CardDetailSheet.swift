@@ -143,12 +143,8 @@ struct CardDetailContent: View {
                         Text("（無能力文字）")
                             .foregroundStyle(.secondary)
                     } else if card.textZH == card.textJP {
-                        // 尚未翻譯的系列：只顯示一份日文，不重複
+                        // 中日欄位相同＝沒有譯文，只顯示一份，不重複
                         abilitySection(title: "卡片文字（日文）", lines: card.textLinesJP)
-                        Label("此卡尚未翻譯，暫以日文顯示",
-                              systemImage: "character.book.closed")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
                     } else {
                         abilitySection(title: appearance.showJapanese ? "能力（繁中）" : "能力",
                                        lines: card.textLinesZH)

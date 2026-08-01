@@ -15,4 +15,6 @@ fetch csm  "CSM/"              "チェンソーマン"            "鏈鋸人"
 fetch hol  "HOL/"              "ホロライブプロダクション"  "hololive"
 fetch uma  "UMA/"              "ウマ娘 プリティーダービー" "賽馬娘"
 fetch mygo "BD/W125,BD/WE42"   "BanG Dream! It's MyGO!!!!!" "MyGO!!!!!"
+fetch bdgbp "BD/W54,BD/W63,BD/W73,BD/W95,BD/WE34" \
+      "BanG Dream! ガールズバンドパーティ！" "BanG Dream! 少女樂團派對"
 echo "ALL_DONE"

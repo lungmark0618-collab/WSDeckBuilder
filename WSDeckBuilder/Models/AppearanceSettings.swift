@@ -229,6 +229,7 @@ enum TitlePalette {
         case "HOL":      Color(red: 0.20, green: 0.60, blue: 0.85)   // hololive：天藍
         case "UMA":      Color(red: 0.25, green: 0.55, blue: 0.35)   // 賽馬娘：草綠
         case "BD/W125":  Color(red: 0.35, green: 0.45, blue: 0.75)   // MyGO：靛藍
+        case "BD/W54":   Color(red: 0.95, green: 0.45, blue: 0.62)   // 少女樂團派對：粉紅
         default:         Color(red: 0.85, green: 0.35, blue: 0.60)
         }
     }

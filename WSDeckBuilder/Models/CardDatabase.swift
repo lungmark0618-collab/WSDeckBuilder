@@ -8,6 +8,8 @@ final class CardDatabase {
     /// 已載入的作品（依 Bundle 內 *_cards.json）
     private(set) var sets: [CardSetMeta] = []
     private(set) var loadError: String?
+    /// 正在解 JSON、建索引；UI 拿來顯示載入畫面
+    private(set) var isLoading = false
 
     private var cardIndex: [String: Card] = [:]         // 任一刷版卡號 → Card
     private var printingIndex: [String: Printing] = [:] // 刷版卡號 → Printing
@@ -16,47 +18,86 @@ final class CardDatabase {
     /// 全部特徵（供 FilterSheet 列舉）
     private(set) var allTraits: [String] = []
 
-    func load() {
+    /// 解碼與建索引的產物。全部是值型別，可以在背景執行緒算完再整包交給主執行緒。
+    private struct Snapshot {
+        var cards: [Card] = []
+        var sets: [CardSetMeta] = []
+        var cardIndex: [String: Card] = [:]
+        var printingIndex: [String: Printing] = [:]
+        var titleByCardID: [String: String] = [:]
+        var relationIndex: [String: [CardRelation]] = [:]
+        var allTraits: [String] = []
+    }
+
+    /// 六百多萬位元組的 JSON 在主執行緒解會卡住畫面數秒，丟到背景做。
+    @MainActor
+    func load() async {
+        guard !isLoading, cards.isEmpty else { return }
+        isLoading = true
+        defer { isLoading = false }
+        let work = Task.detached(priority: .userInitiated) { Self.buildSnapshot() }
+        switch await work.value {
+        case .success(let snapshot):
+            cards = snapshot.cards
+            sets = snapshot.sets
+            cardIndex = snapshot.cardIndex
+            printingIndex = snapshot.printingIndex
+            titleByCardID = snapshot.titleByCardID
+            relationIndex = snapshot.relationIndex
+            allTraits = snapshot.allTraits
+        case .failure(let message):
+            loadError = message
+        }
+    }
+
+    /// 背景解碼的結果；失敗只需要一句給使用者看的訊息，不必包成 Error
+    private enum LoadOutcome {
+        case success(Snapshot)
+        case failure(String)
+    }
+
+    private static func buildSnapshot() -> LoadOutcome {
         let urls = (Bundle.main.urls(forResourcesWithExtension: "json",
                                      subdirectory: nil) ?? [])
             .filter { $0.lastPathComponent.hasSuffix("_cards.json") }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
         guard !urls.isEmpty else {
-            loadError = "找不到卡片資料檔（*_cards.json）"
-            return
+            return .failure("找不到卡片資料檔（*_cards.json）")
         }
+        var snapshot = Snapshot()
         var all: [Card] = []
         for url in urls {
             do {
                 let set = try JSONDecoder().decode(CardSet.self,
                                                    from: Data(contentsOf: url))
-                sets.append(set.meta)
+                snapshot.sets.append(set.meta)
                 for card in set.cards {
-                    titleByCardID[card.id] = set.meta.titleCode
+                    snapshot.titleByCardID[card.id] = set.meta.titleCode
                 }
                 all.append(contentsOf: set.cards)
             } catch {
-                loadError = "\(url.lastPathComponent) 載入失敗：\(error.localizedDescription)"
-                return
+                return .failure("\(url.lastPathComponent) 載入失敗："
+                                + error.localizedDescription)
             }
         }
-        sets.sort { $0.titleCode < $1.titleCode }
-        cards = sortCards(all)
-        for card in cards {
+        snapshot.sets.sort { $0.titleCode < $1.titleCode }
+        snapshot.cards = sortCards(all, titleByCardID: snapshot.titleByCardID)
+        for card in snapshot.cards {
             // 基礎卡號也建索引：SP 特典卡（如 -113）沒有同號普卡刷版
-            cardIndex[card.id] = card
+            snapshot.cardIndex[card.id] = card
             for printing in card.printings {
-                cardIndex[printing.id] = card
-                printingIndex[printing.id] = printing
+                snapshot.cardIndex[printing.id] = card
+                snapshot.printingIndex[printing.id] = printing
             }
         }
-        allTraits = Array(Set(cards.flatMap(\.traitsZH))).sorted()
-        buildRelations()
+        snapshot.allTraits = Array(Set(snapshot.cards.flatMap(\.traitsZH))).sorted()
+        snapshot.relationIndex = buildRelations(snapshot.cards)
+        return .success(snapshot)
     }
 
     /// 能力文字中以「」指名的卡片（羈絆對象、CX 連動指定的 CX 等），
     /// 同時建立反向關聯（這張 CX 被哪些角色連動）
-    private func buildRelations() {
+    private static func buildRelations(_ cards: [Card]) -> [String: [CardRelation]] {
         var byNameJP: [String: [Card]] = [:]
         for card in cards {
             byNameJP[card.nameJP, default: []].append(card)
@@ -65,7 +106,7 @@ final class CardDatabase {
 
         for card in cards where !card.textJP.isEmpty {
             for line in card.textLinesJP {
-                for name in Self.quotedNames(in: line) where name != card.nameJP {
+                for name in quotedNames(in: line) where name != card.nameJP {
                     guard let targets = byNameJP[name] else { continue }
                     let kind = CardRelation.Kind(line: line, target: targets[0])
                     for target in targets where target.id != card.id {
@@ -78,6 +119,7 @@ final class CardDatabase {
             }
         }
         // 同一張卡可能被多行提到：每張只留最具體的關聯（羈絆 > CX連動 > 指名）
+        var result: [String: [CardRelation]] = [:]
         for (id, relations) in index {
             var best: [String: CardRelation] = [:]
             for relation in relations {
@@ -86,9 +128,10 @@ final class CardDatabase {
                     best[relation.card.id] = relation
                 }
             }
-            relationIndex[id] = best.values
+            result[id] = best.values
                 .sorted { ($0.kind.order, $0.card.id) < ($1.kind.order, $1.card.id) }
         }
+        return result
     }
 
     private static func quotedNames(in line: String) -> [String] {
@@ -119,7 +162,8 @@ final class CardDatabase {
     func printing(id: String) -> Printing? { printingIndex[id] }
 
     /// 預設排序：作品 → 等級 → 顏色 → 卡號（CX 排最後）
-    private func sortCards(_ cards: [Card]) -> [Card] {
+    private static func sortCards(_ cards: [Card],
+                                  titleByCardID: [String: String]) -> [Card] {
         let colorOrder: [CardColor: Int] = [.yellow: 0, .green: 1, .red: 2, .blue: 3]
         return cards.sorted { a, b in
             let ta = titleByCardID[a.id] ?? "", tb = titleByCardID[b.id] ?? ""

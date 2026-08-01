@@ -12,9 +12,7 @@ struct WSDeckBuilderApp: App {
                 .environment(database)
                 .environment(appearance)
                 .appAppearance(appearance)
-                .onAppear {
-                    if database.cards.isEmpty { database.load() }
-                }
+                .task { await database.load() }
                 .onReceive(NotificationCenter.default.publisher(
                     for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
                     Task { await ImageCache.shared.handleMemoryWarning() }

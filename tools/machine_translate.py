@@ -14,6 +14,7 @@ machine_translate.py — 規則式翻譯引擎（多作品擴充用）
   python3 machine_translate.py --set sets/nik_raw.json --key nik
 """
 import argparse
+import glob
 import json
 import os
 import re
@@ -830,7 +831,7 @@ def load_shared():
     return glossary, names, traits, chars, words, by_set
 
 
-def translate_line(line, names, traits):
+def translate_line(line, names, traits, chars=None):
     """翻譯一行；殘留假名則回傳 None（保留日文）。"""
     # 保護「」內卡名：已知譯名替換、未知保留原文（卡名保留日文不算失敗）
     protected = {}
@@ -839,7 +840,10 @@ def translate_line(line, names, traits):
     def protect_name(match):
         inner = match.group(1)
         token = f"⟪{len(protected)}⟫"
-        protected[token] = names.get(inner, inner)
+        # 查不到完整卡名時退而查角色名——「カード名に「タマモクロス」を含む」
+        # 這種句型引號內只有角色名，不是任何一張卡的全名。
+        zh = names.get(inner) or (chars or {}).get(inner) or inner
+        protected[token] = zh
         return "「" + token + "」"
 
     def protect_trait(match):
@@ -891,7 +895,7 @@ def translate_name(name, chars, words, names):
     return text
 
 
-def translate_card_text(text, names, traits):
+def translate_card_text(text, names, traits, chars=None):
     """逐行翻譯。回傳 (zh_text, translated_lines, total_lines)。"""
     lines = text.split("\n")
     out, done = [], 0
@@ -899,7 +903,7 @@ def translate_card_text(text, names, traits):
         if not line.strip():
             out.append(line)
             continue
-        zh = translate_line(line, names, traits)
+        zh = translate_line(line, names, traits, chars)
         if zh is not None:
             out.append(zh)
             done += 1
@@ -946,24 +950,59 @@ def bench():
     print(f"（共 {len(misses)} 筆差異）")
 
 
+_ALL_NAMES = None
+
+
+def all_card_names(chars_base, words, names, by_set):
+    """所有系列的卡名索引（跨作品）。
+
+    能力文字會指名別包的卡——BanG Dream! 各團互相收錄、聯名 CX 都是。
+    只查自己這包的話那些名字會整串留日文。算一次全域索引後快取。
+    """
+    global _ALL_NAMES
+    if _ALL_NAMES is not None:
+        return _ALL_NAMES
+    out = {}
+    for path in sorted(glob.glob(os.path.join(HERE, "sets", "*_raw.json"))):
+        key = os.path.basename(path)[: -len("_raw.json")]
+        chars = {**chars_base, **by_set.get(key, {})}
+        for card in json.load(open(path, encoding="utf-8"))["cards"]:
+            jp = card["name_jp"]
+            if jp in out:
+                continue
+            zh = translate_name(jp, chars, words, names)
+            if zh and zh != jp:
+                out[jp] = zh
+    _ALL_NAMES = out
+    return out
+
+
 def run_set(raw_path, key):
-    _, names, traits, chars, words, by_set = load_shared()
-    chars = {**chars, **by_set.get(key, {})}   # 作品覆寫優先
+    _, names, traits, chars_base, words, by_set = load_shared()
+    chars = {**chars_base, **by_set.get(key, {})}   # 作品覆寫優先
     raw = json.load(open(raw_path, encoding="utf-8"))
     out = {"names": {}, "traits": {}}
     cards_done = names_done = 0
-    seen_text = {}
+    # 兩趟：先把整個系列的卡名譯完，再翻能力文字。
+    # 能力文字裡「」的卡名要查得到譯名才會換掉，而多數譯名是這一輪現算的；
+    # 單趟迴圈只看得到前面處理過的卡，引用到後面的卡就會留日文。
     for card in raw["cards"]:
         zh_name = translate_name(card["name_jp"], chars, words, names)
         if zh_name and zh_name != card["name_jp"]:
             out["names"][card["name_jp"]] = zh_name
             names_done += 1
+    # 人工譯名 > 本包機器譯名 > 其他包機器譯名
+    text_names = {**all_card_names(chars_base, words, names, by_set),
+                  **out["names"], **names}
+
+    seen_text = {}
+    for card in raw["cards"]:
         jp = card["text_jp"]
         if not jp:
             continue
         if jp in seen_text:
             continue
-        zh, done, total = translate_card_text(jp, names, traits)
+        zh, done, total = translate_card_text(jp, text_names, traits, chars)
         seen_text[jp] = True
         if done == total and total > 0:   # 全部行都翻完才收錄
             out[card["id"]] = zh

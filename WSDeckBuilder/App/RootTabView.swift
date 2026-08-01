@@ -18,7 +18,21 @@ struct RootTabView: View {
                                        systemImage: "exclamationmark.triangle",
                                        description: Text(error))
                 .background(.background)
+            } else if database.isLoading {
+                // 蓋住空的分頁，不然開啟後會先看到一片空白才跳出卡片
+                loadingScreen
             }
         }
+    }
+
+    private var loadingScreen: some View {
+        VStack(spacing: 14) {
+            ProgressView().controlSize(.large)
+            Text("載入卡片資料…")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.background)
     }
 }

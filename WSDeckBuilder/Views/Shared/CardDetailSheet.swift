@@ -54,21 +54,34 @@ struct CardDetailSheet: View {
         .onAppear { if selection.isEmpty { selection = card.id } }
     }
 
-    /// 中／日切換。實心＋主題色 = 正在顯示日文，線框 = 只有中文
+    /// 中／日切換。translate 沒有 fill 變體，狀態改用底色圈表示：
+    /// 上色 = 正在顯示日文，無底色 = 只有中文
     private var languageToggle: some View {
         @Bindable var settings = appearance
         let on = settings.showJapanese
         return Button {
             withAnimation(.easeInOut(duration: 0.2)) { settings.showJapanese.toggle() }
         } label: {
-            Image(systemName: "character.bubble")
-                .symbolVariant(on ? .fill : .none)
-                // 換圖時淡入淡出，不然直接跳很生硬
-                .contentTransition(.symbolEffect(.replace))
-                .foregroundStyle(on ? AnyShapeStyle(appearance.accentColor)
-                                    : AnyShapeStyle(.secondary))
+            translateIcon
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(on ? AnyShapeStyle(.white) : AnyShapeStyle(.secondary))
+                .frame(width: 28, height: 28)
+                .background {
+                    Circle().fill(on ? AnyShapeStyle(appearance.accentColor)
+                                     : AnyShapeStyle(.clear))
+                }
         }
         .accessibilityLabel(on ? "隱藏日文原文" : "顯示日文原文")
+    }
+
+    /// `translate` 是 iOS 17.4 才有的符號，更舊的系統退回書本圖示
+    @ViewBuilder
+    private var translateIcon: some View {
+        if #available(iOS 17.4, *) {
+            Image(systemName: "translate")
+        } else {
+            Image(systemName: "character.book.closed")
+        }
     }
 }
 

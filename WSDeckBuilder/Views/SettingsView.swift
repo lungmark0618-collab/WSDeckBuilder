@@ -31,7 +31,6 @@ struct SettingsView: View {
                 networkSection
                 prefetchSection
                 cacheSection
-                aboutSection
             }
             .navigationTitle("設定")
             .task { await refreshCacheInfo() }
@@ -138,15 +137,6 @@ struct SettingsView: View {
             Text("圖片快取")
         } footer: {
             Text("卡圖存於本機（不佔 iCloud 備份），看過一次即永久保留。")
-        }
-    }
-
-    private var aboutSection: some View {
-        Section("收錄作品（共 \(database.cards.count) 張）") {
-            ForEach(database.sets, id: \.titleCode) { meta in
-                LabeledContent(meta.titleNameZH,
-                               value: "\(database.cardCount(inTitle: meta.titleCode)) 張")
-            }
         }
     }
 

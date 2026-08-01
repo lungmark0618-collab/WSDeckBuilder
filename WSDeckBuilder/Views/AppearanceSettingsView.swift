@@ -10,6 +10,15 @@ struct AppearanceSettingsView: View {
         Form {
             Section("預覽") { previewCard }
 
+            Section {
+                Toggle("同時顯示日文原文", isOn: $settings.showJapanese)
+            } header: {
+                Text("語言")
+            } footer: {
+                Text("關閉後卡片詳情只留繁中；卡片詳情右上角也可以隨時切換。"
+                     + "《》內的特徵沒有官方中譯，一律保留日文。")
+            }
+
             Section("字體") {
                 Picker("字級", selection: $settings.textSize) {
                     ForEach(TextSize.allCases) { Text($0.label).tag($0) }
@@ -156,6 +165,7 @@ struct AppearanceSettingsView: View {
     }
 
     private func resetAll() {
+        appearance.showJapanese = false
         appearance.textSize = .standard
         appearance.textWeight = .regular
         appearance.textTone = .standard

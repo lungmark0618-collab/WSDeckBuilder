@@ -38,11 +38,20 @@ final class AppearanceSettings {
         didSet { store(fixedAccent.rawValue, "ap.fixedAccent") }
     }
 
+    // MARK: - 語言
+
+    /// 卡片詳情是否同時顯示日文原文；關閉時只留繁中
+    var showJapanese: Bool {
+        didSet { UserDefaults.standard.set(showJapanese, forKey: "ap.showJapanese") }
+    }
+
     /// 目前瀏覽的作品（由圖鑑設定，供 .followTitle 使用）
     var currentTitleCode: String = ""
 
     private init() {
         let defaults = UserDefaults.standard
+        // 預設只顯示中文；沒存過的話 bool(forKey:) 回 false，正好是我們要的預設值
+        showJapanese = defaults.bool(forKey: "ap.showJapanese")
         textSize = TextSize(rawValue: defaults.string(forKey: "ap.textSize") ?? "") ?? .standard
         textWeight = TextWeight(rawValue: defaults.string(forKey: "ap.textWeight") ?? "") ?? .regular
         textTone = TextTone(rawValue: defaults.string(forKey: "ap.textTone") ?? "") ?? .standard

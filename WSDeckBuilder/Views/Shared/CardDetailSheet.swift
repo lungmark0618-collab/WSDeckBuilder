@@ -10,6 +10,7 @@ struct CardDetailSheet: View {
     var deck: Deck?
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppearanceSettings.self) private var appearance
     @State private var selection: String = ""
 
     /// 開啟的卡必須在清單內，否則滑動會找不到起點
@@ -44,12 +45,26 @@ struct CardDetailSheet: View {
                 CardDetailContent(card: related, deck: deck)
             }
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { languageToggle }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成") { dismiss() }
                 }
             }
         }
         .onAppear { if selection.isEmpty { selection = card.id } }
+    }
+
+    /// 中／日切換。用「中」「日」而非地球圖示，一眼看得出現在是哪邊
+    private var languageToggle: some View {
+        @Bindable var settings = appearance
+        return Button {
+            withAnimation(.easeInOut(duration: 0.2)) { settings.showJapanese.toggle() }
+        } label: {
+            Text(settings.showJapanese ? "中日" : "中")
+                .font(.footnote.bold())
+                .monospacedDigit()
+        }
+        .accessibilityLabel(settings.showJapanese ? "隱藏日文原文" : "顯示日文原文")
     }
 }
 
@@ -61,6 +76,7 @@ struct CardDetailContent: View {
     var positionLabel: String?
 
     @Environment(CardDatabase.self) private var database
+    @Environment(AppearanceSettings.self) private var appearance
     @Environment(\.modelContext) private var context
     @Query private var collection: [CollectionEntry]
     @State private var selectedPrintingID: String = ""
@@ -117,8 +133,11 @@ struct CardDetailContent: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
-                        abilitySection(title: "能力（繁中）", lines: card.textLinesZH)
-                        abilitySection(title: "原文（日文）", lines: card.textLinesJP)
+                        abilitySection(title: appearance.showJapanese ? "能力（繁中）" : "能力",
+                                       lines: card.textLinesZH)
+                        if appearance.showJapanese {
+                            abilitySection(title: "原文（日文）", lines: card.textLinesJP)
+                        }
                         if card.translationStatus == .machine {
                             Label("此卡翻譯尚未人工校對",
                                   systemImage: "exclamationmark.triangle")
@@ -185,7 +204,10 @@ struct CardDetailContent: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(card.nameZH).font(.title3.bold())
-            Text(card.nameJP).font(.subheadline).foregroundStyle(.secondary)
+            // 未翻譯的卡名兩邊一樣，顯示日文只會重複一次
+            if appearance.showJapanese, card.nameJP != card.nameZH {
+                Text(card.nameJP).font(.subheadline).foregroundStyle(.secondary)
+            }
             HStack(spacing: 6) {
                 tag(card.cardType.label)
                 tag(card.color.label)

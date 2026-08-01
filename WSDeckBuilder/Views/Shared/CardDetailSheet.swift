@@ -54,17 +54,21 @@ struct CardDetailSheet: View {
         .onAppear { if selection.isEmpty { selection = card.id } }
     }
 
-    /// 中／日切換。用「中」「日」而非地球圖示，一眼看得出現在是哪邊
+    /// 中／日切換。實心＋主題色 = 正在顯示日文，線框 = 只有中文
     private var languageToggle: some View {
         @Bindable var settings = appearance
+        let on = settings.showJapanese
         return Button {
             withAnimation(.easeInOut(duration: 0.2)) { settings.showJapanese.toggle() }
         } label: {
-            Text(settings.showJapanese ? "中日" : "中")
-                .font(.footnote.bold())
-                .monospacedDigit()
+            Image(systemName: "character.bubble")
+                .symbolVariant(on ? .fill : .none)
+                // 換圖時淡入淡出，不然直接跳很生硬
+                .contentTransition(.symbolEffect(.replace))
+                .foregroundStyle(on ? AnyShapeStyle(appearance.accentColor)
+                                    : AnyShapeStyle(.secondary))
         }
-        .accessibilityLabel(settings.showJapanese ? "隱藏日文原文" : "顯示日文原文")
+        .accessibilityLabel(on ? "隱藏日文原文" : "顯示日文原文")
     }
 }
 

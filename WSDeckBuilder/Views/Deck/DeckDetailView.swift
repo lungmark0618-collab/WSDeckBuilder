@@ -16,6 +16,9 @@ struct DeckDetailView: View {
     @State private var showCollected = false
     /// 卡表的顯示方式（與圖鑑分頁各自記憶）
     @AppStorage("deckUsesGrid") private var usesGrid = true
+    /// 出好的牌組圖片；有值就跳分享面板
+    @State private var deckImageURL: URL?
+    @State private var isRenderingImage = false
 
     @Query private var collection: [CollectionEntry]
 
@@ -92,6 +95,9 @@ struct DeckDetailView: View {
         }
         .sheet(isPresented: $isPickingCover) {
             DeckCoverPickerView(deck: deck)
+        }
+        .sheet(item: $deckImageURL) { url in
+            ShareSheet(items: [url])
         }
     }
 
@@ -424,6 +430,13 @@ struct DeckDetailView: View {
                 .disabled(deck.entries.isEmpty)
             }
             Section("匯出") {
+                Button {
+                    Task { await makeDeckImage() }
+                } label: {
+                    Label("匯出牌組圖片（可掃回）", systemImage: "photo")
+                }
+                .disabled(deck.entries.isEmpty || isRenderingImage)
+
                 ShareLink(item: DeckExporter.simpleText(deck: deck, database: database)) {
                     Label("匯出牌表（簡潔版）", systemImage: "doc.plaintext")
                 }
@@ -443,5 +456,18 @@ struct DeckDetailView: View {
         } label: {
             Image(systemName: "ellipsis.circle")
         }
+    }
+
+    /// 出圖只用已快取的卡圖，不在這裡連網下載——牌店現場網路差時
+    /// 至少還出得了圖，缺圖的位置畫卡名佔位。
+    @MainActor
+    private func makeDeckImage() async {
+        isRenderingImage = true
+        defer { isRenderingImage = false }
+        let printings = DeckExporter.groupByCard(deck: deck, database: database)
+            .map(\.card.defaultPrinting)
+        let images = await ImageCache.shared.cachedOnly(printings)
+        deckImageURL = DeckImageExporter.imageFile(deck: deck, database: database,
+                                                   images: images)
     }
 }

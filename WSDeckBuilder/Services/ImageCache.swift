@@ -65,6 +65,16 @@ actor ImageCache {
         return .failed
     }
 
+    /// 只取已經在本機的圖，不連網。出牌組圖片時用——出圖不該卡在下載上，
+    /// 沒快取到的卡就畫佔位。
+    func cachedOnly(_ printings: [Printing]) -> [String: UIImage] {
+        var out: [String: UIImage] = [:]
+        for printing in printings {
+            if let image = cachedImage(for: printing) { out[printing.id] = image }
+        }
+        return out
+    }
+
     private func cachedImage(for printing: Printing) -> UIImage? {
         let key = printing.id as NSString
         if let image = memory.object(forKey: key) { return image }

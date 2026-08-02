@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftData
 import SwiftUI
 
@@ -17,6 +18,9 @@ struct DeckListView: View {
     @State private var pastedText = ""
     @State private var importResult: DeckImporter.Result?
     @State private var importError: String?
+    /// 從相簿挑的牌組圖片，掃圖上的 QR 匯入
+    @State private var showPhotoPicker = false
+    @State private var pickedImageItem: PhotosPickerItem?
 
     var body: some View {
         NavigationStack {
@@ -62,6 +66,13 @@ struct DeckListView: View {
                         Label("新增空牌組", systemImage: "plus")
                     }
                     Divider()
+                    // PhotosPicker 直接放在 Menu 裡按了不會彈出，
+                    // 要由選單設旗標、picker 掛在畫面上才會出現
+                    Button {
+                        showPhotoPicker = true
+                    } label: {
+                        Label("掃牌組圖片匯入", systemImage: "qrcode.viewfinder")
+                    }
                     Button {
                         showFileImporter = true
                     } label: {
@@ -82,6 +93,9 @@ struct DeckListView: View {
                 handleFileImport(result)
             }
             .sheet(isPresented: $showPasteSheet) { pasteSheet }
+            .photosPicker(isPresented: $showPhotoPicker,
+                          selection: $pickedImageItem, matching: .images)
+            .task(id: pickedImageItem) { await importPickedImage() }
             .alert("匯入完成", isPresented: .init(
                 get: { importResult != nil },
                 set: { if !$0 { importResult = nil } })) {
@@ -349,6 +363,26 @@ struct DeckListView: View {
                 importError = "無法讀取檔案：\(error.localizedDescription)"
             }
         case .failure(let error):
+            importError = error.localizedDescription
+        }
+    }
+
+    private func importPickedImage() async {
+        guard let item = pickedImageItem else { return }
+        defer { pickedImageItem = nil }
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data) else {
+                importError = "無法讀取這張圖片。"
+                return
+            }
+            let parsed = try DeckImageImporter.parse(image: image)
+            let result = try DeckImporter.createDeck(
+                from: parsed, database: database,
+                existingNames: decks.map(\.name), context: context)
+            activeDeckUUID = result.deck.uuid.uuidString
+            importResult = result
+        } catch {
             importError = error.localizedDescription
         }
     }

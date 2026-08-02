@@ -210,6 +210,14 @@ def main():
     if reverted:
         print(f"（{reverted} 張驗證未過，譯文已退回日文）", file=sys.stderr)
 
+    # text_lines_* 只是 text_* 用 \n 切開，traits_zh 因為特徵不翻永遠等於
+    # traits_jp——三個欄位佔了輸出的三成。前面的驗證仍需要它們，所以留到
+    # 寫檔前才拿掉，App 端在解碼時自己衍生。
+    for card in cards_out:
+        card.pop("text_lines_jp", None)
+        card.pop("text_lines_zh", None)
+        card.pop("traits_zh", None)
+
     out = {"meta": dict(raw["meta"]), "cards": cards_out}
     out["meta"]["generated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S+08:00")
     with open(args.out, "w", encoding="utf-8") as f:

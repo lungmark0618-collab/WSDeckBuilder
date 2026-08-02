@@ -14,6 +14,9 @@ struct CardBrowserView: View {
     @State private var detailCard: Card?
     /// 套用建議時也會清空關鍵字，別把它誤判成使用者按了清除鈕
     @State private var isApplyingSuggestion = false
+    /// 搜尋結果。SwiftUI 每次重算 body 都會讀它，所以不能是 computed property——
+    /// 那等於每個畫格更新都全表掃一次 3000 多張卡。
+    @State private var results: [Card] = []
 
     private var activeDeck: Deck? {
         decks.first { $0.uuid.uuidString == activeDeckUUID }
@@ -21,11 +24,11 @@ struct CardBrowserView: View {
 
     @Query private var collection: [CollectionEntry]
 
-    private var results: [Card] {
+    private func recomputeResults() {
         let found = database.search(query)
-        guard query.ownership != .all else { return found }
+        guard query.ownership != .all else { results = found; return }
         let index = CollectionStore.index(collection)
-        return found.filter { card in
+        results = found.filter { card in
             let owned = CollectionStore.owned(of: card, in: index)
             return query.ownership == .owned ? owned > 0 : owned == 0
         }
@@ -86,6 +89,19 @@ struct CardBrowserView: View {
                     withAnimation { query = SearchQuery() }
                 }
             }
+            // 打字時每個字都重搜會頓；停一下再搜，中途的輸入直接作廢。
+            // task(id:) 會在 id 變動時取消上一個任務，正好是我們要的行為。
+            .task(id: query.keyword) {
+                if !query.keyword.isEmpty {
+                    try? await Task.sleep(for: .milliseconds(180))
+                    guard !Task.isCancelled else { return }
+                }
+                recomputeResults()
+            }
+            // 篩選、持有狀態、資料載入完成都要重算，但這些不需要延遲
+            .onChange(of: query.filterSignature) { recomputeResults() }
+            .onChange(of: collection) { recomputeResults() }
+            .onChange(of: database.cards.count) { recomputeResults() }
             .sheet(item: $detailCard) { card in
                 // 帶著搜尋結果進去，詳情頁就能左右滑看下一張
                 CardDetailSheet(card: card, siblings: results, deck: activeDeck)

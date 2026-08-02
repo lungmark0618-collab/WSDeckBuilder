@@ -1,7 +1,7 @@
 import Foundation
 
 /// 邏輯上的「一張卡」：同名同文字，可能有多種刷版（§3.2 一卡多刷）
-struct Card: Codable, Identifiable, Hashable {
+struct Card: Decodable, Identifiable, Hashable {
     let id: String                  // 基礎卡號 "BRD/W139-075"
     let printings: [Printing]       // 所有刷版，[0] 為普卡
     let nameJP: String
@@ -14,13 +14,20 @@ struct Card: Codable, Identifiable, Hashable {
     let soul: Int?
     let trigger: TriggerIcon?
     let traitsJP: [String]
-    let traitsZH: [String]
     let textJP: String
     let textZH: String
-    let textLinesJP: [String]
-    let textLinesZH: [String]
     let translationStatus: TranslationStatus
     let source: CardSource
+
+    // MARK: - 解碼時衍生（不進 JSON，省下三成檔案大小）
+
+    /// 能力文字逐行。就是 textJP 以換行切開，不必存第二份
+    let textLinesJP: [String]
+    let textLinesZH: [String]
+    /// 特徵刻意不翻譯（要跟卡面一致），中文欄位永遠等於日文
+    var traitsZH: [String] { traitsJP }
+    /// 搜尋用的小寫全文。每次比對再 lowercased() 會重複配置整個資料庫的字串
+    let searchBlob: String
 
     var defaultPrinting: Printing { printings[0] }
 
@@ -31,12 +38,35 @@ struct Card: Codable, Identifiable, Hashable {
         case cardType = "card_type"
         case color
         case traitsJP = "traits_jp"
-        case traitsZH = "traits_zh"
         case textJP = "text_jp"
         case textZH = "text_zh"
-        case textLinesJP = "text_lines_jp"
-        case textLinesZH = "text_lines_zh"
         case translationStatus = "translation_status"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        printings = try c.decode([Printing].self, forKey: .printings)
+        nameJP = try c.decode(String.self, forKey: .nameJP)
+        nameZH = try c.decode(String.self, forKey: .nameZH)
+        cardType = try c.decode(CardType.self, forKey: .cardType)
+        color = try c.decode(CardColor.self, forKey: .color)
+        level = try c.decodeIfPresent(Int.self, forKey: .level)
+        cost = try c.decodeIfPresent(Int.self, forKey: .cost)
+        power = try c.decodeIfPresent(Int.self, forKey: .power)
+        soul = try c.decodeIfPresent(Int.self, forKey: .soul)
+        trigger = try c.decodeIfPresent(TriggerIcon.self, forKey: .trigger)
+        traitsJP = try c.decode([String].self, forKey: .traitsJP)
+        textJP = try c.decode(String.self, forKey: .textJP)
+        textZH = try c.decode(String.self, forKey: .textZH)
+        translationStatus = try c.decode(TranslationStatus.self, forKey: .translationStatus)
+        source = try c.decode(CardSource.self, forKey: .source)
+
+        textLinesJP = textJP.isEmpty ? [] : textJP.components(separatedBy: "\n")
+        textLinesZH = textZH.isEmpty ? [] : textZH.components(separatedBy: "\n")
+        searchBlob = [nameJP, nameZH, textJP, textZH]
+            .joined(separator: "\n")
+            .lowercased()
     }
 }
 
@@ -142,7 +172,7 @@ enum CardSource: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-struct CardSet: Codable {
+struct CardSet: Decodable {
     let meta: CardSetMeta
     let cards: [Card]
 }

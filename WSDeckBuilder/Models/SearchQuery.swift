@@ -17,6 +17,19 @@ struct SearchQuery: Equatable {
             || titleCode != nil || ownership != .all
     }
 
+    /// 關鍵字以外的條件指紋，供畫面判斷該不該重算搜尋結果。
+    /// 關鍵字另外走 debounce，所以刻意不含在裡面。
+    var filterSignature: String {
+        [levels.sorted().map(String.init).joined(separator: ","),
+         colors.map(\.rawValue).sorted().joined(separator: ","),
+         types.map(\.rawValue).sorted().joined(separator: ","),
+         triggers.map(\.rawValue).sorted().joined(separator: ","),
+         traits.sorted().joined(separator: ","),
+         sourceOnly?.rawValue ?? "",
+         titleCode ?? "",
+         ownership.rawValue].joined(separator: "|")
+    }
+
     /// 卡號比對忽略大小寫與 `/` `-`（輸入 w139075 也能命中 BRD/W139-075）
     static func normalizeCardNumber(_ s: String) -> String {
         s.lowercased()

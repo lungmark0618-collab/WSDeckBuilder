@@ -260,10 +260,9 @@ final class CardDatabase {
                card.printings.contains(where: {
                    SearchQuery.normalizeCardNumber($0.id).contains(normalized)
                }) { return true }
-            return card.nameJP.lowercased().contains(lower)
-                || card.nameZH.lowercased().contains(lower)
-                || card.textJP.lowercased().contains(lower)
-                || card.textZH.lowercased().contains(lower)
+            // searchBlob 是載入時就算好的小寫全文；這裡再 lowercased() 等於
+            // 每按一次鍵就把整個資料庫的卡名與能力文字重新配置一遍
+            return card.searchBlob.contains(lower)
         }
     }
 }

@@ -127,8 +127,17 @@ private struct DeckImageSheet: View {
         }
     }
 
+    /// 卡片短邊 63mm、長邊 88mm；CX 是橫的，其餘是直的
+    private static let cardWidth: CGFloat = 96
+    private static let portraitHeight: CGFloat = 133
+    private static let landscapeHeight: CGFloat = 96 * 63 / 88
+
     private func tile(_ item: DeckExporter.CardCount) -> some View {
-        VStack(spacing: 3) {
+        // CX 橫卡塞進直式框去 fill，會被裁掉大半還溢出格子
+        let isClimax = item.card.cardType == .climax
+        let artHeight = isClimax ? Self.landscapeHeight : Self.portraitHeight
+
+        return VStack(spacing: 3) {
             ZStack(alignment: .bottomTrailing) {
                 Group {
                     if let image = images[item.card.defaultPrinting.id] {
@@ -143,7 +152,8 @@ private struct DeckImageSheet: View {
                             }
                     }
                 }
-                .frame(width: 96, height: 133)
+                .frame(width: Self.cardWidth, height: artHeight)
+                .clipped()
                 .clipShape(RoundedRectangle(cornerRadius: 4))
 
                 Text("×\(item.count)")
@@ -153,6 +163,10 @@ private struct DeckImageSheet: View {
                     .foregroundStyle(.white)
                     .padding(3)
             }
+            // 橫卡比較矮，外框仍固定成直卡高度，各列才不會錯開；
+            // 靠下對齊讓所有卡的底緣連成一線，才不會有卡浮在半空中
+            .frame(width: Self.cardWidth, height: Self.portraitHeight,
+                   alignment: .bottom)
             Text(item.card.id)
                 .font(.system(size: 7).monospaced())
                 .foregroundStyle(.secondary)

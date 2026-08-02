@@ -9,11 +9,16 @@ translate_helper.py — 能力文字補翻的固定流程工具
   * 《》特徵必須原樣保留（traits 不翻譯，《音楽》就是《音楽》）
   * 譯文不得殘留假名（《》與「」內除外，那是專有名詞）
 
-用法：
+用法（能力文字）：
   python3 translate_helper.py dump  <key> [start] [count]   # 列出未翻譯的文字
   python3 translate_helper.py check <key> <譯文.json>        # 只驗證不寫檔
   python3 translate_helper.py apply <key> <譯文.json>        # 驗證並產生覆寫檔
   python3 translate_helper.py names <key>                   # 交叉驗證角色譯名
+
+用法（卡名）：
+  python3 translate_helper.py dumpnames  <key> [start] [count]
+  python3 translate_helper.py checknames <key> <譯文.json>
+  python3 translate_helper.py applynames <key> <譯文.json>   # 寫入 names_extra
 """
 import json
 import os
@@ -147,6 +152,86 @@ def cmd_apply(key, path):
     return 0
 
 
+# ── 卡名補翻 ─────────────────────────────────────────────────────
+
+def pending_names(key):
+    """尚未翻譯的卡名（中日相同＝沒譯出），依卡號排序、去重"""
+    _, cards = load(key)
+    seen, out = set(), []
+    for c in cards["cards"]:
+        jp, zh = c["name_jp"], c.get("name_zh", c["name_jp"])
+        if jp == zh and KANA.search(jp) and jp not in seen:
+            seen.add(jp)
+            out.append((c["id"], jp))
+    return out
+
+
+def cmd_dumpnames(key, start=0, count=None):
+    items = pending_names(key)
+    start = int(start)
+    end = len(items) if count is None else start + int(count)
+    for cid, jp in items[start:end]:
+        print(f"{cid:16} {jp}")
+    print(f"--- 顯示 {start}~{min(end, len(items))}，本系列共 {len(items)} 個未翻卡名 ---",
+          file=sys.stderr)
+
+
+def verify_names(trans, key):
+    """卡名譯文檢查：不得殘留假名、數字要一致、角色名要對得上"""
+    extra = json.load(open(f"{HERE}/translations/names_extra.json", encoding="utf-8"))
+    chars = dict(extra.get("characters", {}))
+    by_set = extra.get("characters_by_set", {})
+    source = extra.get("characters_shared_from", {}).get(key)
+    if source:
+        chars.update(by_set.get(source, {}))
+    chars.update(by_set.get(key, {}))
+
+    problems = []
+    todo = {jp for _, jp in pending_names(key)}
+    for jp, zh in trans.items():
+        if jp not in todo:
+            problems.append(f"[不在待翻清單] {jp}")
+            continue
+        if not zh.strip():
+            problems.append(f"[空譯文] {jp}")
+            continue
+        if KANA.search(zh):
+            problems.append(f"[殘留假名] {jp} → {zh}")
+        if sorted(NUM.findall(jp)) != sorted(NUM.findall(zh)):
+            problems.append(f"[數字不符] {jp} → {zh}")
+        # 日文卡名含某角色時，中文卡名就該出現對應譯名（取最長匹配）
+        hit = max((k for k in chars if k in jp), key=len, default=None)
+        if hit and chars[hit] not in zh:
+            problems.append(f"[角色名對不上] {jp} → {zh}（應含「{chars[hit]}」）")
+    return problems
+
+
+def cmd_checknames(key, path):
+    trans = json.load(open(path, encoding="utf-8"))
+    problems = verify_names(trans, key)
+    for p in problems:
+        print(p)
+    print(f"\n{len(trans)} 個卡名，{len(problems)} 個問題；"
+          f"本系列還剩 {len(pending_names(key))} 個未翻")
+    return 1 if problems else 0
+
+
+def cmd_applynames(key, path):
+    if cmd_checknames(key, path) != 0:
+        print("\n有問題，未寫檔。", file=sys.stderr)
+        return 1
+    trans = json.load(open(path, encoding="utf-8"))
+    dest = f"{HERE}/translations/names_extra.json"
+    extra = json.load(open(dest, encoding="utf-8"))
+    before = len(extra["names"])
+    extra["names"].update(trans)
+    json.dump(extra, open(dest, "w", encoding="utf-8"),
+              ensure_ascii=False, indent=1)
+    print(f"寫入 {dest}：新增 {len(extra['names']) - before} 個，"
+          f"共 {len(extra['names'])} 個卡名")
+    return 0
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print(__doc__)
@@ -160,6 +245,12 @@ if __name__ == "__main__":
         sys.exit(cmd_apply(key, sys.argv[3]))
     elif cmd == "names":
         sys.exit(cmd_names(key))
+    elif cmd == "dumpnames":
+        cmd_dumpnames(key, *sys.argv[3:])
+    elif cmd == "checknames":
+        sys.exit(cmd_checknames(key, sys.argv[3]))
+    elif cmd == "applynames":
+        sys.exit(cmd_applynames(key, sys.argv[3]))
     else:
         print(__doc__)
         sys.exit(2)

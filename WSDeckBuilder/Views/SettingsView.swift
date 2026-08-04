@@ -127,8 +127,6 @@ struct SettingsView: View {
             if let checked = updater.lastCheckedAt {
                 Text("上次檢查：\(checked.formatted(date: .abbreviated, time: .shortened))")
             }
-            Text("更新的是卡片資料，不是 App 本身；介面與功能的變更仍須回 Xcode 重裝。"
-                 + "牌組只記卡號，換卡表不影響既有牌組。")
         }
     }
 

@@ -3,21 +3,26 @@ import SwiftUI
 /// 篩選條件 sheet（§4.4.1：條件間 AND、同條件內 OR）
 struct FilterSheet: View {
     @Binding var query: SearchQuery
+    /// 畫面已經鎖定某部作品時藏起這一區——在這裡換作品，
+    /// 標題和內容就會對不上
+    var lockedTitle = false
     @Environment(CardDatabase.self) private var database
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("作品") {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            titleChip(nil, label: "全部")
-                            ForEach(database.sets, id: \.titleCode) { meta in
-                                titleChip(meta.titleCode, label: meta.titleNameZH)
+                if !lockedTitle {
+                    Section("作品") {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                titleChip(nil, label: "全部")
+                                ForEach(database.sets, id: \.titleCode) { meta in
+                                    titleChip(meta.titleCode, label: meta.titleNameZH)
+                                }
                             }
+                            .padding(.vertical, 2)
                         }
-                        .padding(.vertical, 2)
                     }
                 }
                 Section("等級") {

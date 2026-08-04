@@ -89,7 +89,7 @@ final class DataUpdater {
     /// 用 raw.githubusercontent.com 而非 github.com/…/blob/…——後者回傳的是 HTML 不是 JSON。
     /// raw 走 Fastly CDN、約快取 5 分鐘，所以 push 後可能要等幾分鐘才查得到新版，不是壞掉。
     static let manifestURL = URL(string: "https://raw.githubusercontent.com"
-        + "/marklung/WSDeckBuilder/main/data/manifest.json")!
+        + "/lungmark0618-collab/WSDeckBuilder/main/data/manifest.json")!
 
     enum State: Equatable {
         case idle

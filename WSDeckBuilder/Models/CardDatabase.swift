@@ -33,6 +33,18 @@ final class CardDatabase {
     @MainActor
     func load() async {
         guard !isLoading, cards.isEmpty else { return }
+        await rebuild()
+    }
+
+    /// 線上更新換掉檔案後重讀。牌組只存卡號，不需要搬遷（§4.4.8）
+    @MainActor
+    func reload() async {
+        guard !isLoading else { return }
+        await rebuild()
+    }
+
+    @MainActor
+    private func rebuild() async {
         isLoading = true
         defer { isLoading = false }
         let work = Task.detached(priority: .userInitiated) { Self.buildSnapshot() }
@@ -56,11 +68,24 @@ final class CardDatabase {
         case failure(String)
     }
 
+    /// 卡表檔的來源。同檔名時下載版蓋過內建版，這樣沒更新過也能離線運作（§4.4.8）
+    static func dataFileURLs() -> [URL] {
+        var byName: [String: URL] = [:]
+        for url in Bundle.main.urls(forResourcesWithExtension: "json",
+                                    subdirectory: nil) ?? []
+        where url.lastPathComponent.hasSuffix("_cards.json") {
+            byName[url.lastPathComponent] = url
+        }
+        let downloaded = (try? FileManager.default.contentsOfDirectory(
+            at: CardDataStore.directory, includingPropertiesForKeys: nil)) ?? []
+        for url in downloaded where url.lastPathComponent.hasSuffix("_cards.json") {
+            byName[url.lastPathComponent] = url
+        }
+        return byName.values.sorted { $0.lastPathComponent < $1.lastPathComponent }
+    }
+
     private static func buildSnapshot() -> LoadOutcome {
-        let urls = (Bundle.main.urls(forResourcesWithExtension: "json",
-                                     subdirectory: nil) ?? [])
-            .filter { $0.lastPathComponent.hasSuffix("_cards.json") }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        let urls = dataFileURLs()
         guard !urls.isEmpty else {
             return .failure("找不到卡片資料檔（*_cards.json）")
         }

@@ -220,8 +220,20 @@ def main():
 
     out = {"meta": dict(raw["meta"]), "cards": cards_out}
     out["meta"]["generated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S+08:00")
+    # data_version 是線上更新的比對依據（§4.4.8），每重新產出一次就 +1。
+    # 從既有輸出檔沿用，raw_cards.json 不帶這個欄位。
+    previous = 0
+    if os.path.exists(args.out):
+        try:
+            with open(args.out, encoding="utf-8") as f:
+                previous = json.load(f)["meta"].get("data_version", 0)
+        except (ValueError, KeyError, OSError):
+            pass
+    out["meta"]["data_version"] = previous + 1
     with open(args.out, "w", encoding="utf-8") as f:
-        json.dump(out, f, ensure_ascii=False, indent=1)
+        # 不縮排：這是打包進 App 的資源，不是給人讀的。
+        # 十份卡表省下約 0.5 MB，diff 也不會因為排版而爆掉
+        json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
     print(f"完成：{len(cards_out)} 張卡 → {args.out}"
           f"（驗證未通過 {failed} 張）", file=sys.stderr)
     sys.exit(1 if failed else 0)

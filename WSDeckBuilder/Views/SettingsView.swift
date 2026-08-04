@@ -3,7 +3,11 @@ import SwiftUI
 /// 設定分頁：網路政策、快取管理、預先下載（§4.4.6 / §4.4.7）
 struct SettingsView: View {
     @Environment(CardDatabase.self) private var database
+    @Environment(DataUpdater.self) private var updater
     @State private var policy = NetworkPolicy.shared
+    @State private var showSourceEditor = false
+    @State private var draftURL = ""
+    @State private var confirmRevert = false
 
     @State private var cacheSize: Int64 = 0
     @State private var cachedCount = 0
@@ -28,12 +32,131 @@ struct SettingsView: View {
                 } footer: {
                     Text("字體大小與粗細、文字與背景顏色、強調色。")
                 }
+                cardDataSection
                 networkSection
                 prefetchSection
                 cacheSection
             }
             .navigationTitle("設定")
             .task { await refreshCacheInfo() }
+            .alert("卡表來源", isPresented: $showSourceEditor) {
+                TextField("https://…/manifest.json", text: $draftURL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Button("儲存") { updater.manifestURLString = draftURL }
+                Button("取消", role: .cancel) {}
+            } message: {
+                Text("填入 manifest.json 的網址。留空即關閉線上更新，"
+                     + "App 一律使用內建卡表。")
+            }
+        }
+    }
+
+    // MARK: - 卡表更新（§4.4.8）
+
+    @ViewBuilder
+    private var cardDataSection: some View {
+        Section {
+            // 每部作品各自一個版本號，改一彈就只需要下載那一份
+            ForEach(database.sets.sorted { $0.titleNameZH < $1.titleNameZH },
+                    id: \.titleCode) { set in
+                LabeledContent(set.titleNameZH) {
+                    Text("v\(set.dataVersion)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Button {
+                draftURL = updater.manifestURLString
+                showSourceEditor = true
+            } label: {
+                LabeledContent("卡表來源") {
+                    Text(updater.isConfigured ? "已設定" : "未設定")
+                        .foregroundStyle(updater.isConfigured
+                                         ? AnyShapeStyle(.secondary)
+                                         : AnyShapeStyle(Color.orange))
+                }
+            }
+
+            if updater.isConfigured {
+                updateControls
+            }
+
+            if CardDataStore.hasDownloadedData {
+                Button("還原為 App 內建卡表", role: .destructive) {
+                    confirmRevert = true
+                }
+                .confirmationDialog("下載的卡表會被刪除，改用 App 內建的版本。",
+                                    isPresented: $confirmRevert,
+                                    titleVisibility: .visible) {
+                    Button("還原", role: .destructive) {
+                        Task { await updater.revertToBundled(database: database) }
+                    }
+                    Button("取消", role: .cancel) {}
+                }
+            }
+        } header: {
+            Text("卡表")
+        } footer: {
+            cardDataFooter
+        }
+    }
+
+    @ViewBuilder
+    private var updateControls: some View {
+        switch updater.state {
+        case .checking:
+            HStack { ProgressView(); Text("檢查中…").foregroundStyle(.secondary) }
+        case .downloading(let done, let total):
+            VStack(alignment: .leading, spacing: 6) {
+                Text("更新中… \(done)/\(total)").font(.caption)
+                ProgressView(value: total > 0 ? Double(done) / Double(total) : 0)
+            }
+        case .updateAvailable(let pending):
+            ForEach(pending) { item in
+                LabeledContent(item.titleName) {
+                    Text(item.fromVersion == 0
+                         ? "新作品 v\(item.toVersion)"
+                         : "v\(item.fromVersion) → v\(item.toVersion)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.tint)
+                }
+            }
+            Button {
+                Task { await updater.performUpdate(pending, database: database) }
+            } label: {
+                Label("更新 \(pending.count) 部作品的卡表",
+                      systemImage: "arrow.down.circle.fill")
+            }
+        default:
+            Button {
+                Task { await updater.check(against: database) }
+            } label: {
+                Label("檢查更新", systemImage: "arrow.triangle.2.circlepath")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var cardDataFooter: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            switch updater.state {
+            case .upToDate:
+                Text("已是最新版本").foregroundStyle(.green)
+            case .failed(let message):
+                Text(message).foregroundStyle(.orange)
+            default:
+                EmptyView()
+            }
+            if let notes = updater.notes, !notes.isEmpty {
+                Text(notes)
+            }
+            if let checked = updater.lastCheckedAt {
+                Text("上次檢查：\(checked.formatted(date: .abbreviated, time: .shortened))")
+            }
+            Text("更新的是卡片資料，不是 App 本身；介面與功能的變更仍須回 Xcode 重裝。"
+                 + "牌組只記卡號，換卡表不影響既有牌組。")
         }
     }
 

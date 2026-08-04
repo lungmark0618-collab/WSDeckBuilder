@@ -182,11 +182,24 @@ struct CardSetMeta: Codable {
     let titleNameJP: String
     let titleNameZH: String
     let cardCount: Int
+    /// 單調遞增，線上更新就比這個數字（§4.4.8）。
+    /// 舊卡表沒有這個欄位，當作 1
+    let dataVersion: Int
 
     enum CodingKeys: String, CodingKey {
         case titleCode = "title_code"
         case titleNameJP = "title_name_jp"
         case titleNameZH = "title_name_zh"
         case cardCount = "card_count"
+        case dataVersion = "data_version"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        titleCode = try c.decode(String.self, forKey: .titleCode)
+        titleNameJP = try c.decode(String.self, forKey: .titleNameJP)
+        titleNameZH = try c.decode(String.self, forKey: .titleNameZH)
+        cardCount = try c.decode(Int.self, forKey: .cardCount)
+        dataVersion = try c.decodeIfPresent(Int.self, forKey: .dataVersion) ?? 1
     }
 }

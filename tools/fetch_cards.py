@@ -121,6 +121,9 @@ def clean_text(raw: str):
     if not raw or raw.strip() == "-":
         return ""
     t = re.sub(r"<br\s*/?>", "\n", raw)
+    # stock.gif 身兼二職：費用框裡指「能量區」，當判定標誌時卻是「金」。
+    # 官網共用同一張圖，只能靠前文的「トリガーアイコンが」判斷。
+    t = re.sub(r"(トリガーアイコンが)\[\[stock\.gif\]\]", r"\1【金】", t)
     t = GIF_TOKEN.sub(lambda m: ICON_LABEL.get(m.group(1), f"[{m.group(1)}]"), t)
     t = re.sub(r"<[^>]+>", "", t)  # 移除其餘 HTML 標籤
     return t.strip()

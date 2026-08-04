@@ -4,17 +4,20 @@ import Observation
 /// 下載回來的卡表放哪。用 Application Support 而非 Caches——
 /// Caches 在裝置空間不足時會被系統清掉，卡表被清掉就退回內建的舊版了。
 enum CardDataStore {
-    static let directory: URL = {
+    static var directory: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory,
                                             in: .userDomainMask)[0]
-        let dir = base.appendingPathComponent("CardData", isDirectory: true)
+        var dir = base.appendingPathComponent("CardData", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir,
                                                  withIntermediateDirectories: true)
+        // 卡表公開發佈後隨時能重抓，沒必要佔使用者的 iCloud 備份容量。
+        // （卡圖快取也是同樣理由排除備份。）
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? dir.setResourceValues(values)
         return dir
     }()
 
-    /// 卡表是使用者資料的一部分（可能含手改的譯文），不排除備份；
-    /// 卡圖那邊才需要排除，因為隨時能重抓
     static func file(named name: String) -> URL {
         directory.appendingPathComponent(name)
     }
@@ -81,6 +84,13 @@ final class DataUpdater {
     /// 這版 App 看得懂的 manifest 格式
     static let supportedSchemaVersion = 1
 
+    /// 卡表發佈位置（§6.3：v1.8 起改為 public GitHub repo）。
+    ///
+    /// 用 raw.githubusercontent.com 而非 github.com/…/blob/…——後者回傳的是 HTML 不是 JSON。
+    /// raw 走 Fastly CDN、約快取 5 分鐘，所以 push 後可能要等幾分鐘才查得到新版，不是壞掉。
+    static let manifestURL = URL(string: "https://raw.githubusercontent.com"
+        + "/marklung/WSDeckBuilder/main/data/manifest.json")!
+
     enum State: Equatable {
         case idle
         case checking
@@ -105,14 +115,7 @@ final class DataUpdater {
     private(set) var state: State = .idle
     private(set) var notes: String?
 
-    private static let urlKey = "cardDataManifestURL"
     private static let checkedKey = "cardDataLastCheckedAt"
-
-    /// 資料檔放哪由使用者自己決定——本專案不公開發布卡表（§6.3），
-    /// 所以不預設任何網址，空著就等於關掉這個功能
-    var manifestURLString: String {
-        didSet { UserDefaults.standard.set(manifestURLString, forKey: Self.urlKey) }
-    }
 
     /// 存起來，「一天查一次」才能跨越重開 App
     var lastCheckedAt: Date? {
@@ -123,25 +126,14 @@ final class DataUpdater {
     }
 
     init() {
-        manifestURLString = UserDefaults.standard.string(forKey: Self.urlKey) ?? ""
         let stamp = UserDefaults.standard.double(forKey: Self.checkedKey)
         lastCheckedAt = stamp > 0 ? Date(timeIntervalSince1970: stamp) : nil
-    }
-
-    var isConfigured: Bool { manifestURL != nil }
-
-    private var manifestURL: URL? {
-        let trimmed = manifestURLString.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let url = URL(string: trimmed),
-              url.scheme == "https" || url.scheme == "http" else { return nil }
-        return url
     }
 
     // MARK: - 檢查
 
     /// 啟動時靜默呼叫。查不到就沿用本地資料，不跳錯誤打擾（§4.4.8）
     func checkSilently(against database: CardDatabase) async {
-        guard isConfigured else { return }
         // 一天查一次就夠，不必每次開 App 都連線
         if let last = lastCheckedAt, Date().timeIntervalSince(last) < 86_400 { return }
         guard NetworkPolicy.shared.allowsAutomaticDownload else { return }
@@ -149,13 +141,9 @@ final class DataUpdater {
     }
 
     func check(against database: CardDatabase, silent: Bool = false) async {
-        guard let url = manifestURL else {
-            state = .failed("還沒設定卡表來源網址")
-            return
-        }
         if !silent { state = .checking }
         do {
-            var request = URLRequest(url: url)
+            var request = URLRequest(url: Self.manifestURL)
             // manifest 一定要拿最新的，不然改了版本號 App 還在讀舊的快取
             request.cachePolicy = .reloadIgnoringLocalCacheData
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -170,7 +158,8 @@ final class DataUpdater {
             }
             lastCheckedAt = Date()
             notes = manifest.notes
-            let pending = Self.pending(in: manifest, base: url, database: database)
+            let pending = Self.pending(in: manifest, base: Self.manifestURL,
+                                       database: database)
             state = pending.isEmpty ? .upToDate : .updateAvailable(pending)
         } catch {
             // 靜默檢查失敗就當作沒事發生，不要在開場擋人
@@ -204,6 +193,9 @@ final class DataUpdater {
     /// 中途失敗不影響現有資料
     func performUpdate(_ pending: [Pending], database: CardDatabase) async {
         guard !pending.isEmpty else { return }
+        // 連點兩下「更新」會重複下載並互相覆寫。畫面上按鈕在下載時就換成進度條了，
+        // 但那是畫面層的保護，狀態自己也要擋。
+        if case .downloading = state { return }
         state = .downloading(done: 0, total: pending.count)
         var installed = 0
         for item in pending {

@@ -5,8 +5,6 @@ struct SettingsView: View {
     @Environment(CardDatabase.self) private var database
     @Environment(DataUpdater.self) private var updater
     @State private var policy = NetworkPolicy.shared
-    @State private var showSourceEditor = false
-    @State private var draftURL = ""
     @State private var confirmRevert = false
 
     @State private var cacheSize: Int64 = 0
@@ -39,16 +37,6 @@ struct SettingsView: View {
             }
             .navigationTitle("設定")
             .task { await refreshCacheInfo() }
-            .alert("卡表來源", isPresented: $showSourceEditor) {
-                TextField("https://…/manifest.json", text: $draftURL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                Button("儲存") { updater.manifestURLString = draftURL }
-                Button("取消", role: .cancel) {}
-            } message: {
-                Text("填入 manifest.json 的網址。留空即關閉線上更新，"
-                     + "App 一律使用內建卡表。")
-            }
         }
     }
 
@@ -67,21 +55,7 @@ struct SettingsView: View {
                 }
             }
 
-            Button {
-                draftURL = updater.manifestURLString
-                showSourceEditor = true
-            } label: {
-                LabeledContent("卡表來源") {
-                    Text(updater.isConfigured ? "已設定" : "未設定")
-                        .foregroundStyle(updater.isConfigured
-                                         ? AnyShapeStyle(.secondary)
-                                         : AnyShapeStyle(Color.orange))
-                }
-            }
-
-            if updater.isConfigured {
-                updateControls
-            }
+            updateControls
 
             if CardDataStore.hasDownloadedData {
                 Button("還原為 App 內建卡表", role: .destructive) {

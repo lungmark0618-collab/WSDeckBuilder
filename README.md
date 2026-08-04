@@ -1,4 +1,4 @@
-# WS 棕色塵埃2 牌組管理器（WSDeckBuilder）
+# WS 牌組管理器（WSDeckBuilder）
 
 依《WS牌組管理器_開發計劃書 v1.5》實作。個人使用，不上架。
 

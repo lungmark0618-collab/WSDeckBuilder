@@ -1,0 +1,45 @@
+name: 產生卡表 manifest
+
+# manifest.json 是 Resources/ 的衍生產物。人工維護遲早會漏掉——改完卡表忘了重跑
+# make_manifest.py，manifest 寫的版本就跟實際檔案對不上，手機那邊會抓到舊的或抓不到。
+# 交給 CI 就不可能忘記。
+on:
+  push:
+    branches: [main]
+    paths:
+      - "WSDeckBuilder/Resources/*_cards.json"
+      - "tools/make_manifest.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write      # 產生後要 commit 回來
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 產生 manifest
+        run: |
+          # App 顯示的更新說明就用這次的 commit 標題，你寫什麼手機上就看到什麼
+          NOTES="$(git log -1 --pretty=%s)"
+          python3 tools/make_manifest.py \
+            --base-url "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/WSDeckBuilder/Resources/" \
+            --notes "$NOTES" \
+            --out data/manifest.json
+
+      - name: 確認產出的 manifest 沒問題
+        run: python3 tools/check_cards.py
+
+      - name: Commit 回 repo
+        run: |
+          if git diff --quiet -- data/manifest.json; then
+            echo "manifest 沒有變動，不需要 commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/manifest.json
+          git commit -m "Regenerate card manifest [skip ci]"
+          git push

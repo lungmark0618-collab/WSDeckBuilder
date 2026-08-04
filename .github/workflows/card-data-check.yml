@@ -1,0 +1,24 @@
+name: 卡表健檢
+
+# 壞掉的卡表推上線之後，手機會一直更新失敗。擋在 push 這一關比較便宜。
+on:
+  push:
+    paths:
+      - "WSDeckBuilder/Resources/*_cards.json"
+      - "data/manifest.json"
+      - "tools/check_cards.py"
+      - ".github/workflows/card-data-check.yml"
+  pull_request:
+    paths:
+      - "WSDeckBuilder/Resources/*_cards.json"
+      - "data/manifest.json"
+  # 手動也能跑
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 檢查卡表結構
+        run: python3 tools/check_cards.py

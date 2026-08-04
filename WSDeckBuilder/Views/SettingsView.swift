@@ -45,14 +45,12 @@ struct SettingsView: View {
     @ViewBuilder
     private var cardDataSection: some View {
         Section {
-            // 每部作品各自一個版本號，改一彈就只需要下載那一份
-            ForEach(database.sets.sorted { $0.titleNameZH < $1.titleNameZH },
-                    id: \.titleCode) { set in
-                LabeledContent(set.titleNameZH) {
-                    Text("v\(set.dataVersion)")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
+            // 逐部列出版本會佔掉整個畫面，而那些數字平常沒有人要看——
+            // 真正需要知道哪部要更新的時候，updateControls 自己會列出來
+            LabeledContent("收錄") {
+                Text("\(database.sets.count) 部作品 · \(database.cards.count) 張")
+                    .font(.callout.monospacedDigit())
+                    .foregroundStyle(.secondary)
             }
 
             updateControls

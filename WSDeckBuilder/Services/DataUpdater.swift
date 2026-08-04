@@ -84,12 +84,13 @@ final class DataUpdater {
     /// 這版 App 看得懂的 manifest 格式
     static let supportedSchemaVersion = 1
 
-    /// 卡表發佈位置（§6.3：v1.8 起改為 public GitHub repo）。
+    /// 卡表發佈位置。刻意放在另一個 repo：卡面文字是權利方的著作，
+    /// 跟這份原始碼分開，公開分享的東西才只含自己寫的部分（§6.3）。
     ///
     /// 用 raw.githubusercontent.com 而非 github.com/…/blob/…——後者回傳的是 HTML 不是 JSON。
     /// raw 走 Fastly CDN、約快取 5 分鐘，所以 push 後可能要等幾分鐘才查得到新版，不是壞掉。
     static let manifestURL = URL(string: "https://raw.githubusercontent.com"
-        + "/lungmark0618-collab/WSDeckBuilder/main/data/manifest.json")!
+        + "/lungmark0618-collab/WSDeckBuilder-data/main/manifest.json")!
 
     enum State: Equatable {
         case idle

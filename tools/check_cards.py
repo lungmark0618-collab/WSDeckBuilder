@@ -10,6 +10,7 @@ CI 會自動跑（.github/workflows/card-data-check.yml），本機也可以直�
     python3 tools/check_cards.py
 """
 
+import argparse
 import glob
 import json
 import os
@@ -17,8 +18,6 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-RESOURCES = os.path.join(ROOT, "WSDeckBuilder", "Resources")
-MANIFEST = os.path.join(ROOT, "data", "manifest.json")
 
 REQUIRED_META = ["title_code", "title_name_jp", "title_name_zh",
                  "card_count", "data_version"]
@@ -72,12 +71,12 @@ def check_set(path, problems):
     return meta
 
 
-def check_manifest(metas, problems):
-    if not os.path.exists(MANIFEST):
+def check_manifest(manifest_path, resources, metas, problems):
+    if not manifest_path or not os.path.exists(manifest_path):
         return  # 還沒產生過，不算錯
 
     try:
-        with open(MANIFEST, encoding="utf-8") as f:
+        with open(manifest_path, encoding="utf-8") as f:
             manifest = json.load(f)
     except (OSError, ValueError) as exc:
         problems.append(f"manifest.json：讀不開或不是合法 JSON（{exc}）")
@@ -89,18 +88,27 @@ def check_manifest(metas, problems):
     # 版本號刻意不比對——manifest 由 CI 在同一次 push 之後才重新產生，
     # 這時候本來就會落後一個版本，比了只會得到假警報
     for entry in manifest.get("sets", []):
-        target = os.path.join(RESOURCES, entry.get("file", ""))
+        target = os.path.join(resources, entry.get("file", ""))
         if not os.path.exists(target):
-            problems.append(f"manifest.json：指向不存在的檔案 {entry.get('file')}")
+            problems.append(f"manifest：指向不存在的檔案 {entry.get('file')}")
         if entry.get("title_code") not in metas:
-            problems.append(f"manifest.json：{entry.get('title_code')} "
-                            "在 Resources 裡沒有對應的卡表")
+            problems.append(f"manifest：{entry.get('title_code')} "
+                            "沒有對應的卡表")
 
 
 def main():
-    paths = sorted(glob.glob(os.path.join(RESOURCES, "*_cards.json")))
+    parser = argparse.ArgumentParser(description="卡表結構健檢")
+    parser.add_argument("--resources",
+                        default=os.path.join(ROOT, "WSDeckBuilder", "Resources"),
+                        help="卡表所在目錄")
+    parser.add_argument("--manifest",
+                        default=os.path.join(ROOT, "data", "manifest.json"),
+                        help="要一併檢查的 manifest（不存在就略過）")
+    args = parser.parse_args()
+
+    paths = sorted(glob.glob(os.path.join(args.resources, "*_cards.json")))
     if not paths:
-        print(f"在 {RESOURCES} 找不到任何 *_cards.json", file=sys.stderr)
+        print(f"在 {args.resources} 找不到任何 *_cards.json", file=sys.stderr)
         sys.exit(1)
 
     problems = []
@@ -115,7 +123,7 @@ def main():
                   f"v{meta.get('data_version', '?')}  "
                   f"{meta.get('card_count', '?')} 張")
 
-    check_manifest(metas, problems)
+    check_manifest(args.manifest, args.resources, metas, problems)
 
     print(f"\n{len(paths)} 部作品，共 {total} 張卡")
     if problems:

@@ -2,3 +2,16 @@ xcuserdata/
 DerivedData/
 .DS_Store
 *.xcuserstate
+
+# ── 卡片資料一律不進版控 ────────────────────────────────
+# 日文卡名與能力文字的著作權屬 Bushiroad，中文譯文是它的衍生著作。
+# 這個 repo 只放產生資料的工具，不放資料本身；要用就自己跑 tools/fetch_cards.py。
+# 詳見 README 的「卡片資料」一節。
+WSDeckBuilder/Resources/*_cards.json
+tools/sets/
+tools/translations/
+tools/*_cards.json
+tools/raw_cards.json
+tools/review_result.json
+data/
+dist/

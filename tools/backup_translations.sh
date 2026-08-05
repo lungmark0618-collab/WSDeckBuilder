@@ -7,6 +7,11 @@
 #
 #   ./tools/backup_translations.sh              # iCloud + 本機各存一份
 #   ./tools/backup_translations.sh /Volumes/X   # 只存到指定位置（外接硬碟等）
+#   ./tools/backup_translations.sh --max-age 7  # 最近 7 天內備過就跳過
+#
+# --max-age 是給排程用的。排程只保證「時間到了會跑」，不保證電腦當下開著；
+# 所以改成排程與登入各觸發一次，由腳本自己看上次備份多久以前來決定要不要做。
+# 錯過的那一週會在下次開機時補上，而且不會因為多觸發幾次就備出一堆重複檔。
 #
 # 預設同時寫兩個地方，因為兩者擋的是不同的意外：
 #   iCloud     — 電腦壞掉、遺失
@@ -19,6 +24,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+MAX_AGE=""
+if [ "${1:-}" = "--max-age" ]; then
+    MAX_AGE="$2"; shift 2
+fi
+
 if [ $# -gt 0 ]; then
     DESTS=("$@")
 else
@@ -26,6 +36,21 @@ else
         "$HOME/Library/Mobile Documents/com~apple~CloudDocs/WSDeckBuilder-backup"
         "$HOME/Backups/WSDeckBuilder"
     )
+fi
+
+# 以「最舊的那個目的地」為準：只要有一邊過期就重備，不然那一邊會永遠落後
+if [ -n "$MAX_AGE" ]; then
+    STALE=0
+    for DEST in "${DESTS[@]}"; do
+        NEWEST="$(ls -t "$DEST"/translations-*.tar.gz 2>/dev/null | head -1 || true)"
+        if [ -z "$NEWEST" ]; then STALE=1; break; fi
+        # find -mtime 用天數比對，+N 表示「超過 N 天」
+        if [ -n "$(find "$NEWEST" -mtime "+$MAX_AGE" 2>/dev/null)" ]; then STALE=1; break; fi
+    done
+    if [ "$STALE" -eq 0 ]; then
+        echo "$(date '+%Y-%m-%d %H:%M') 最近 $MAX_AGE 天內已備份，跳過"
+        exit 0
+    fi
 fi
 
 STAMP="$(date +%Y%m%d-%H%M)"

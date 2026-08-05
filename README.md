@@ -57,6 +57,15 @@ python3 validate.py --cards sets/sfn_cards.json   # → sets/review_sfn.html
 
 > 沒有卡表時 App 會顯示「找不到卡片資料檔」——這是預期行為，先跑完上面的管線。
 
+**只是想把 App 跑起來、不想等爬蟲**，可以直接抓 App 平常在用的那份線上卡表：
+
+```bash
+python3 tools/fetch_published_cards.py
+```
+
+抓下來的每一份都會驗證（解得開、作品代號對得上、非空）。CI 跑測試前也是走這條路——
+23 個測試裡有 9 個需要真實卡表。
+
 ## 翻譯管線
 
 WS 的卡面文字高度模板化，這是整件事可行的原因。分三層處理：
@@ -117,6 +126,8 @@ tools/                   資料管線（不納入 Xcode target）
 ├── validate.py          重跑驗證並產出日中對照的校對頁
 ├── check_cards.py       卡表結構健檢
 ├── make_manifest.py     產生線上更新用的 manifest
+├── fetch_published_cards.py  抓已發佈的卡表（免重爬官網）
+├── pick_simulator.py    挑一台可用的 iPhone 模擬器（CI 用）
 └── backup_translations.sh  備份譯文（不進版控，見「卡片資料」）
 
 docs/開發計劃書.md        設計文件

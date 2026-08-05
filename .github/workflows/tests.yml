@@ -1,0 +1,51 @@
+name: 測試
+
+# 為什麼需要這個：`CardDatabase.load()` 改成 async 之後測試整組編譯不過，
+# 卻三週後才在一次人工稽核裡被發現——因為沒人跑過。編譯壞掉當下就該知道。
+on:
+  push:
+    branches: [main]
+    paths:
+      - "WSDeckBuilder/**"
+      - "WSDeckBuilderTests/**"
+      - "WSDeckBuilder.xcodeproj/**"
+      - "tools/fetch_published_cards.py"
+      - "tools/pick_simulator.py"
+      - ".github/workflows/tests.yml"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 卡片資料不在這個 repo 裡（著作權考量，見 README）。23 個測試裡有 9 個
+      # 需要真實卡表，所以先抓 App 平常在抓的那份線上卡表。
+      - name: 取得卡表
+        run: python3 tools/fetch_published_cards.py
+
+      - name: 卡表健檢
+        run: python3 tools/check_cards.py --manifest ""
+
+      - name: 選一台模擬器
+        id: sim
+        run: |
+          UDID="$(python3 tools/pick_simulator.py --verbose)"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      # CODE_SIGNING_ALLOWED=NO：模擬器測試不需要簽章，而專案裡設了
+      # DEVELOPMENT_TEAM，runner 上沒有那個團隊的憑證會編不過。
+      # 刻意不用管線接美化工具——那會讓 xcodebuild 的離開碼被吃掉，
+      # 測試失敗卻回報成功，比沒有 CI 更糟。
+      - name: 測試
+        run: |
+          xcodebuild test \
+            -scheme WSDeckBuilder \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO
+        env:
+          NSUnbufferedIO: YES

@@ -18,6 +18,10 @@
 #   ~/Backups  — iCloud 帳號出事、誤刪同步、「最佳化儲存空間」把檔案清成雲端指標
 # 注意這台機器的「桌面」與「文件」都被 iCloud 接管了，存那裡不算本機備份。
 #
+# ⚠️ 排程（launchd）跑的時候只能指定 ~/Backups。macOS 的隱私保護不讓背景工作碰
+#    iCloud Drive，連列目錄都會被拒——而列不到目錄，--max-age 就會誤判成「沒備過」
+#    而每次都重備。iCloud 那份靠手動執行時更新（終端機有權限）。
+#
 # 產生的是加日期的壓縮檔而不是直接覆蓋——同步式備份的問題是，
 # 檔案壞掉之後那個「壞掉」也會被同步過去，舊快照才救得回來。
 
@@ -72,19 +76,27 @@ COUNT="$(tar -tzf "$ARCHIVE" | wc -l | tr -d ' ')"
 SIZE="$(du -h "$ARCHIVE" | cut -f1)"
 echo "打包完成：$COUNT 個項目，$SIZE"
 
+# 每個目的地各自獨立處理：一個掛掉不該讓其他的也沒備到。
+# （這是實際踩過的坑——iCloud 那邊失敗時，整個腳本就中止，本機那份從此再也沒更新。）
+FAILED=0
 for DEST in "${DESTS[@]}"; do
-    mkdir -p "$DEST"
-    cp "$ARCHIVE" "$DEST/"
-    # 複製過去也要能讀，才算真的到位
-    if tar -tzf "$DEST/translations-$STAMP.tar.gz" >/dev/null 2>&1; then
-        echo "  ✓ $DEST"
-    else
-        echo "  ✗ $DEST（複製後讀不開）" >&2
-        exit 1
+    if ! mkdir -p "$DEST" 2>/dev/null || ! cp "$ARCHIVE" "$DEST/" 2>/dev/null; then
+        echo "  ✗ $DEST（寫入失敗）" >&2
+        FAILED=1
+        continue
     fi
-    # 只留最近幾份，其餘刪掉
-    ( cd "$DEST" && ls -t translations-*.tar.gz 2>/dev/null \
-        | tail -n +$((KEEP + 1)) | while read -r old; do rm -- "$old"; done )
+    # 複製過去也要能讀，才算真的到位
+    if ! tar -tzf "$DEST/translations-$STAMP.tar.gz" >/dev/null 2>&1; then
+        echo "  ✗ $DEST（複製後讀不開）" >&2
+        FAILED=1
+        continue
+    fi
+    echo "  ✓ $DEST"
+    # 只留最近幾份，其餘刪掉。清不掉不算失敗，備份本身已經成功了
+    ( cd "$DEST" 2>/dev/null && ls -t translations-*.tar.gz 2>/dev/null \
+        | tail -n +$((KEEP + 1)) | while read -r old; do rm -- "$old"; done ) || true
     N="$(ls -1 "$DEST"/translations-*.tar.gz 2>/dev/null | wc -l | tr -d ' ')"
-    echo "    保留 $N 份（上限 $KEEP）"
+    echo "    保留 ${N:-?} 份（上限 $KEEP）"
 done
+
+exit $FAILED

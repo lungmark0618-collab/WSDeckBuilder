@@ -5,26 +5,33 @@ final class CardSearchTests: XCTestCase {
 
     private var database: CardDatabase!
 
-    override func setUp() {
-        super.setUp()
+    // load() 是 @MainActor async（解 JSON 丟到背景做，見 CardDatabase），
+    // 所以 setUp 也得是 async 才等得到它完成
+    @MainActor
+    override func setUp() async throws {
+        try await super.setUp()
         database = CardDatabase()
-        // 測試 target 以 app 為 host，可直接讀 app bundle 的 brd_cards.json
-        database.load()
+        // 測試 target 以 app 為 host，可直接讀 app bundle 內的卡表
+        await database.load()
     }
 
     func testDataLoads() {
         XCTAssertNil(database.loadError)
         XCTAssertFalse(database.cards.isEmpty)
         XCTAssertTrue(database.sets.contains { $0.titleCode == "BRD/W139" })
-        // 多作品：8 個新系列 + BRD
-        XCTAssertEqual(database.sets.count, 9, "\(database.sets.map(\.titleCode))")
+        // 對照實際打包進去的檔案數，而不是寫死數字——寫死的話每收錄一部作品
+        // 就得改測試，而真正要防的是「有卡表檔沒被載進來」
+        XCTAssertEqual(database.sets.count, CardDatabase.dataFileURLs().count,
+                       "\(database.sets.map(\.titleCode))")
     }
 
     func testTitleFilter() {
         var query = SearchQuery()
         query.titleCode = "BRD/W139"
         let results = database.search(query)
-        XCTAssertEqual(results.count, 140)
+        // 依作品篩選應該正好拿到該作品的全部卡片
+        let meta = database.sets.first { $0.titleCode == "BRD/W139" }
+        XCTAssertEqual(results.count, meta?.cardCount)
         XCTAssertTrue(results.allSatisfy { $0.id.hasPrefix("BRD/") })
     }
 

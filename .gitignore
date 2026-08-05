@@ -15,3 +15,7 @@ tools/raw_cards.json
 tools/review_result.json
 data/
 dist/
+
+# validate.py 的產物，每次執行都會重產，不該進版控
+tools/review*.html
+tools/sets/review*.html

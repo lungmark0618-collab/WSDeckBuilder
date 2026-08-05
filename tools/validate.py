@@ -11,6 +11,7 @@ validate.py — 階段一 M3：重跑自動化驗證＋產出互動式日中對�
 用法：
   python3 validate.py            # 驗證 brd_cards.json 並產出 review.html
 """
+import argparse
 import html
 import json
 import os
@@ -60,7 +61,7 @@ main { padding: 1rem 2rem 4rem; }
 .hidden { display:none; }
 </style></head><body>
 <div class="topbar">
- <h1>BRD/W139 棕色塵埃2 — 翻譯校對（共 __COUNT__ 張__WARNTXT__）</h1>
+ <h1>__TITLE__ — 翻譯校對（共 __COUNT__ 張__WARNTXT__）</h1>
  <span class="progress" id="progress"></span>
  <select id="filter">
   <option value="all">顯示全部</option>
@@ -181,7 +182,15 @@ ROW = """<div class="card{warn}" data-id="{id}">
 
 
 def main():
-    data = load_json(os.path.join(HERE, "brd_cards.json"))
+    ap = argparse.ArgumentParser(
+        description="自動驗證卡表譯文，並產出日中對照的人工校對頁")
+    ap.add_argument("--cards", required=True,
+                    help="要驗證的卡表，例如 sets/uma_cards.json")
+    ap.add_argument("--out", default=None,
+                    help="校對頁輸出位置（預設為卡表同目錄的 review_<key>.html）")
+    args = ap.parse_args()
+
+    data = load_json(args.cards)
     glossary = load_json(os.path.join(HERE, "glossary.json"))
     rows, failed = [], 0
     for c in data["cards"]:
@@ -199,11 +208,20 @@ def main():
             jp=html.escape(c["text_jp"] or "（無能力文字）"),
             zh=html.escape(c["text_zh"] or "（無能力文字）"),
             problems=f'<div class="problems">⚠ {"; ".join(problems)}</div>' if problems else ""))
+    # 標題從卡表自己的 meta 取，不要寫死——13 部作品共用這支腳本，
+    # 寫死的話拿去校對別部作品，頁面標題會指向錯的系列
+    m = data.get("meta", {})
+    title = html.escape(f"{m.get('title_code', '?')} {m.get('title_name_zh', '?')}")
     page = (PAGE
+            .replace("__TITLE__", title)
             .replace("__COUNT__", str(len(data["cards"])))
             .replace("__WARNTXT__", f"・自動驗證未通過 {failed} 張" if failed else "")
             .replace("__ROWS__", "\n".join(rows)))
-    out = os.path.join(HERE, "review.html")
+    if args.out:
+        out = args.out
+    else:
+        base = os.path.basename(args.cards).replace("_cards.json", "")
+        out = os.path.join(os.path.dirname(args.cards) or ".", f"review_{base}.html")
     with open(out, "w", encoding="utf-8") as f:
         f.write(page)
     print(f"驗證：{len(data['cards'])} 張、未通過 {failed} 張 → {out}")

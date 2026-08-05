@@ -46,8 +46,14 @@ python3 translate.py --raw sets/sfn_raw.json --out sets/sfn_cards.json
 cp sets/sfn_cards.json ../WSDeckBuilder/Resources/
 ```
 
-`fetch_all.sh` 是一次跑完全部作品的批次腳本。抓取維持每次請求間隔 1~2 秒，
-不對官方伺服器造成負擔。
+`fetch_all.sh` 是一次跑完全部作品的批次腳本，各作品實際用的 `--sets` 參數都記在裡面，
+照抄改一行即可。抓取維持每次請求間隔 1~2 秒，不對官方伺服器造成負擔。
+
+想人工校對譯文，`validate.py` 會產出日中對照頁：
+
+```bash
+python3 validate.py --cards sets/sfn_cards.json   # → sets/review_sfn.html
+```
 
 > 沒有卡表時 App 會顯示「找不到卡片資料檔」——這是預期行為，先跑完上面的管線。
 
@@ -63,8 +69,9 @@ WS 的卡面文字高度模板化，這是整件事可行的原因。分三層�
 
 `《》` 特徵刻意保留日文——對牌時要跟卡面長得一樣才好認。
 
-**卡名不走這條路**。431 個描述性前綴裡有 373 個（87%）只出現一次；能力文字能靠規則
-組合，卡名不行，只能一張一張處理。`translate_helper.py` 就是為了讓這件事可以分批進行。
+**卡名不走這條路**。1,753 個描述性前綴裡有 1,560 個（89%）只出現一次；能力文字能靠
+規則組合，卡名不行，只能一張一張處理。`translate_helper.py` 就是為了讓這件事可以分批
+進行——dump 出未翻的、翻好、apply 回去，中途可以停。
 
 ## 建置
 
@@ -107,8 +114,10 @@ tools/                   資料管線（不納入 Xcode target）
 ├── machine_translate.py 規則翻譯
 ├── translate.py         三層管線 + 驗證
 ├── translate_helper.py  分批校對用
+├── validate.py          重跑驗證並產出日中對照的校對頁
 ├── check_cards.py       卡表結構健檢
-└── make_manifest.py     產生線上更新用的 manifest
+├── make_manifest.py     產生線上更新用的 manifest
+└── backup_translations.sh  備份譯文（不進版控，見「卡片資料」）
 
 docs/開發計劃書.md        設計文件
 ```

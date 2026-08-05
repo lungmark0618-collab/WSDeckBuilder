@@ -181,11 +181,14 @@ def group_cards(items, source_rule):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--sets", default="BRD/W139",
+    # 收錄了 13 部作品之後，「預設抓哪一部」已經沒有合理答案，一律必填。
+    # 各作品實際用的參數見 fetch_all.sh。
+    ap.add_argument("--sets", required=True,
                     help="卡號前綴，逗號分隔可合併多彈（如 BD/W125,BD/WE42）")
-    ap.add_argument("--title-jp", default="ブラウンダスト2")
-    ap.add_argument("--title-zh", default="棕色塵埃2")
-    ap.add_argument("--out", default="raw_cards.json")
+    ap.add_argument("--title-jp", required=True, help="作品日文名")
+    ap.add_argument("--title-zh", required=True, help="作品繁中名")
+    ap.add_argument("--out", required=True,
+                    help="輸出位置，慣例為 sets/<key>_raw.json")
     args = ap.parse_args()
 
     prefixes = [s.strip() for s in args.sets.split(",") if s.strip()]

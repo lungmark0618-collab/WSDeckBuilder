@@ -27,6 +27,7 @@ struct CardCatalogView: View {
 
     @State private var query: SearchQuery
     @State private var showFilter = false
+    @State private var showDeckQuickView = false
     @State private var detailCard: Card?
     /// 套用建議時也會清空關鍵字，別把它誤判成使用者按了清除鈕
     @State private var isApplyingSuggestion = false
@@ -114,11 +115,19 @@ struct CardCatalogView: View {
                     ActiveDeckPicker(decks: decks, activeDeckUUID: $activeDeckUUID)
                     activeFilterBar
                     suggestionBar
+                    if let activeDeck {
+                        ActiveDeckStripView(deck: activeDeck) { showDeckQuickView = true }
+                    }
                 }
             }
         }
         .sheet(isPresented: $showFilter) {
             FilterSheet(query: $query, lockedTitle: pinnedTitle != nil)
+        }
+        .sheet(isPresented: $showDeckQuickView) {
+            if let activeDeck {
+                ActiveDeckQuickView(deck: activeDeck)
+            }
         }
         // 強調色跟著目前瀏覽的作品
         .onChange(of: query.titleCode, initial: true) {

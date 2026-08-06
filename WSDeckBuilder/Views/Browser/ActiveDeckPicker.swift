@@ -39,12 +39,6 @@ struct ActiveDeckPicker: View {
                             .font(.caption2)
                     }
                 }
-                if let deck = activeDeck {
-                    Spacer()
-                    Text("\(deck.totalCount)/50")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(deck.totalCount == 50 ? .green : .secondary)
-                }
             }
             if !decks.isEmpty { Spacer(minLength: 0) }
         }

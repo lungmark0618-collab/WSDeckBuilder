@@ -194,12 +194,12 @@ struct CardCatalogView: View {
     @ViewBuilder
     private var activeFilterBar: some View {
         if hasVisibleFilters {
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.s8) {
                 Image(systemName: "line.3.horizontal.decrease.circle.fill")
                     .foregroundStyle(.tint)
                 Text(filterSummary)
                     .lineLimit(1)
-                Spacer(minLength: 4)
+                Spacer(minLength: Spacing.s4)
                 Button {
                     withAnimation { resetQuery() }
                 } label: {
@@ -211,7 +211,7 @@ struct CardCatalogView: View {
             }
             .font(.caption)
             .padding(.horizontal)
-            .padding(.vertical, 7)
+            .padding(.vertical, Spacing.s8)
             .background(.bar)
             .overlay(alignment: .bottom) { Divider() }
         }
@@ -253,7 +253,7 @@ struct CardCatalogView: View {
         let items = suggestions
         if !items.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+                HStack(spacing: Spacing.s8) {
                     ForEach(items) { item in
                         Button {
                             // 切到該作品，關鍵字清掉才看得到整個系列
@@ -269,7 +269,7 @@ struct CardCatalogView: View {
                     }
                 }
                 .padding(.horizontal)
-                .padding(.vertical, 7)
+                .padding(.vertical, Spacing.s8)
             }
             .background(.bar)
             .overlay(alignment: .bottom) { Divider() }
@@ -277,7 +277,7 @@ struct CardCatalogView: View {
     }
 
     private func suggestionChip(_ item: SearchSuggestion) -> some View {
-        HStack(spacing: 5) {
+        HStack(spacing: Spacing.s4 + 1) {
             switch item.reason {
             case .exact:
                 Image(systemName: "square.stack.3d.up.fill")
@@ -294,8 +294,8 @@ struct CardCatalogView: View {
                 .foregroundStyle(.secondary)
         }
         .font(.caption.weight(.medium))
-        .padding(.horizontal, 11)
-        .padding(.vertical, 6)
+        .padding(.horizontal, Spacing.s12)
+        .padding(.vertical, Spacing.s8)
         .background(item.isExact ? Color.accentColor.opacity(0.16)
                                  : Color(.tertiarySystemFill),
                     in: Capsule())
@@ -307,8 +307,8 @@ struct CardCatalogView: View {
 
     private var grid: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)],
-                      spacing: 12) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: Spacing.s12)],
+                      spacing: Spacing.s16) {
                 ForEach(results) { card in
                     CardGridItemView(card: card, deck: activeDeck) {
                         detailCard = card
@@ -316,7 +316,7 @@ struct CardCatalogView: View {
                 }
             }
             .padding(.horizontal)
-            .padding(.bottom, 8)
+            .padding(.bottom, Spacing.s8)
         }
     }
 

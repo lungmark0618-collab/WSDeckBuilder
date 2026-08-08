@@ -34,10 +34,11 @@ struct CardGridItemView: View {
     }
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: Spacing.s8) {
             Button(action: onTap) {
                 CardImageView(printing: displayPrinting, cardName: card.nameZH,
                               landscape: card.cardType == .climax)
+                    .comfortShadow(.card)
                     .overlay(alignment: .bottomLeading) {
                         if ownedCount > 0 {
                             Label("\(ownedCount)", systemImage: "shippingbox.fill")

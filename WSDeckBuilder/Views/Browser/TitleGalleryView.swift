@@ -15,8 +15,8 @@ struct TitleGalleryView: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 158), spacing: 12)],
-                      spacing: 12) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 158), spacing: Spacing.s12)],
+                      spacing: Spacing.s12) {
                 ForEach(ordered, id: \.titleCode) { set in
                     NavigationLink(value: CatalogRoute.title(set.titleCode)) {
                         tile(set)
@@ -27,15 +27,15 @@ struct TitleGalleryView: View {
             .padding(.horizontal)
             allCardsRow
                 .padding(.horizontal)
-                .padding(.top, 12)
+                .padding(.top, Spacing.s12)
         }
-        .padding(.top, 8)
-        .padding(.bottom, 8)
+        .padding(.top, Spacing.s8)
+        .padding(.bottom, Spacing.s8)
     }
 
     private func tile(_ set: CardSetMeta) -> some View {
         let color = TitlePalette.accent(for: set.titleCode)
-        return VStack(alignment: .leading, spacing: 3) {
+        return VStack(alignment: .leading, spacing: Spacing.s4) {
             Text(set.titleNameZH)
                 .font(.headline)
                 .lineLimit(2)
@@ -44,25 +44,28 @@ struct TitleGalleryView: View {
                 .font(.caption2)
                 .lineLimit(1)
                 .opacity(0.85)
-            Spacer(minLength: 6)
+            Spacer(minLength: Spacing.s4 + 2)
             HStack(alignment: .firstTextBaseline) {
                 Text(set.titleCode)
                     .font(.caption2.monospaced())
                     .opacity(0.8)
-                Spacer(minLength: 4)
+                Spacer(minLength: Spacing.s4)
                 Text("\(set.cardCount)")
                     .font(.caption.bold().monospacedDigit())
             }
         }
         .foregroundStyle(.white)
-        .padding(12)
+        // 卡片內距至少 16px——原本 12px 在小螢幕上文字幾乎貼著邊
+        .padding(Spacing.s16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 104, alignment: .topLeading)
+        .frame(height: 108, alignment: .topLeading)
         .background {
             LinearGradient(colors: [color, color.opacity(0.7)],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.mid, style: .continuous))
+        // 讓色塊像「疊在背景上的卡片」而不是畫在背景裡的色塊
+        .comfortShadow(.card)
     }
 
     /// 不分作品瀏覽仍留一條路，只是不擺在最上面搶走「先選作品」的主線
@@ -80,10 +83,11 @@ struct TitleGalleryView: View {
                     .foregroundStyle(.tertiary)
             }
             .font(.subheadline)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.horizontal, Spacing.s16)
+            .padding(.vertical, Spacing.s12)
             .background(Color(.secondarySystemBackground),
-                        in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        in: RoundedRectangle(cornerRadius: Radius.mid, style: .continuous))
+            .comfortShadow(.card)
         }
         .buttonStyle(.plain)
     }

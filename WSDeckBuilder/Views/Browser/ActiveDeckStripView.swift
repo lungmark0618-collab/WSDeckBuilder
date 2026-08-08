@@ -15,12 +15,12 @@ struct ActiveDeckStripView: View {
     var body: some View {
         if !items.isEmpty {
             Button(action: onTap) {
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 4) {
+                VStack(alignment: .leading, spacing: Spacing.s8) {
+                    HStack(spacing: Spacing.s4) {
                         Text(deck.name)
                             .font(.subheadline.weight(.semibold))
                             .lineLimit(1)
-                        Spacer(minLength: 8)
+                        Spacer(minLength: Spacing.s8)
                         Text("\(deck.totalCount)/50")
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(deck.totalCount == 50 ? .green : .secondary)
@@ -29,7 +29,7 @@ struct ActiveDeckStripView: View {
                             .foregroundStyle(.secondary)
                     }
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
+                        HStack(spacing: Spacing.s8) {
                             ForEach(items, id: \.card.id) { item in
                                 thumbnail(for: item)
                             }
@@ -37,7 +37,7 @@ struct ActiveDeckStripView: View {
                     }
                 }
                 .padding(.horizontal)
-                .padding(.vertical, 6)
+                .padding(.vertical, Spacing.s8)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -63,5 +63,6 @@ struct ActiveDeckStripView: View {
                     .background(.black.opacity(0.75), in: Capsule())
                     .padding(2)
             }
+            .comfortShadow(.card)
     }
 }

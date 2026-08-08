@@ -43,7 +43,7 @@ struct ActiveDeckPicker: View {
             if !decks.isEmpty { Spacer(minLength: 0) }
         }
         .padding(.horizontal)
-        .padding(.vertical, 6)
+        .padding(.vertical, Spacing.s8)
         .background(.bar)
     }
 }

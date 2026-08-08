@@ -82,7 +82,7 @@ struct AppearanceSettingsView: View {
     // MARK: - 預覽
 
     private var previewCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.s8) {
             HStack {
                 Text("海灘天使 泰蕾莎").font(.headline)
                 Spacer()
@@ -94,11 +94,11 @@ struct AppearanceSettingsView: View {
                 .foregroundStyle(.secondary)
             Text("【自】 此卡從手牌被放置到舞台時，你可以支付費用。")
                 .font(.callout)
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.s8) {
                 ForEach(["角色", "黃", "RR"], id: \.self) { tag in
                     Text(tag)
                         .font(.caption)
-                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .padding(.horizontal, Spacing.s8).padding(.vertical, 3)
                         .background(appearance.accentColor.opacity(0.18), in: Capsule())
                 }
             }
@@ -111,7 +111,7 @@ struct AppearanceSettingsView: View {
     private var colorSwatches: some View {
         @Bindable var settings = appearance
         return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
+            HStack(spacing: Spacing.s12) {
                 ForEach(AccentPreset.allCases) { preset in
                     Button {
                         settings.fixedAccent = preset
@@ -140,7 +140,7 @@ struct AppearanceSettingsView: View {
     /// 顯示各作品對應的顏色，讓使用者知道會怎麼變
     private var titlePaletteRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
+            HStack(spacing: Spacing.s12) {
                 ForEach(database.sets, id: \.titleCode) { meta in
                     VStack(spacing: 4) {
                         Circle()

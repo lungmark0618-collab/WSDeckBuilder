@@ -64,15 +64,15 @@ struct DeckStatsView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 13)
         .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: Radius.mid, style: .continuous)
                 .fill(.thinMaterial)
             // 每塊各帶一點自己的色溫，四格才不會糊成一片灰
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: Radius.mid, style: .continuous)
                 .fill(LinearGradient(colors: [tint.opacity(0.14), tint.opacity(0.02)],
                                      startPoint: .top, endPoint: .bottom))
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: Radius.mid, style: .continuous)
                 .strokeBorder(tint.opacity(0.22), lineWidth: 1)
         }
     }
@@ -86,11 +86,11 @@ struct DeckStatsView: View {
                 .padding(14)
                 .frame(maxWidth: .infinity)
                 .background {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: Radius.mid, style: .continuous)
                         .fill(.thinMaterial)
                 }
                 .overlay {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: Radius.mid, style: .continuous)
                         .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
                 }
                 .shadow(color: .black.opacity(0.06), radius: 6, y: 3)

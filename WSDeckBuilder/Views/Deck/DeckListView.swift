@@ -32,7 +32,8 @@ struct DeckListView: View {
                             .opacity(0)
                         row(deck)
                     }
-                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: Spacing.s8, leading: Spacing.s16,
+                                              bottom: Spacing.s8, trailing: Spacing.s16))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                     .swipeActions(edge: .trailing) {
@@ -151,7 +152,7 @@ struct DeckListView: View {
         let cover = deck.coverPrinting(database: database)
         let isActive = deck.uuid.uuidString == activeDeckUUID
 
-        return HStack(spacing: 14) {
+        return HStack(spacing: Spacing.s16) {
             // 封面：卡片本身就是最好的識別，給它足夠份量
             Group {
                 if let cover {
@@ -220,7 +221,7 @@ struct DeckListView: View {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(.white.opacity(0.5))
         }
-        .padding(14)
+        .padding(Spacing.s16)
         .background {
             ZStack {
                 // 底色先鋪滿，卡圖載入前後都不會露出空白
@@ -234,14 +235,14 @@ struct DeckListView: View {
                 ], startPoint: .leading, endPoint: .trailing)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Radius.large, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: Radius.large, style: .continuous)
                 .strokeBorder(isActive ? Color.accentColor.opacity(0.9)
                                        : .white.opacity(0.12),
                               lineWidth: isActive ? 2 : 1)
         }
-        .shadow(color: .black.opacity(0.18), radius: 8, x: 0, y: 4)
+        .comfortShadow(.floating)
     }
 
     /// 深色卡面上的狀態標籤：達標亮綠，未達標維持中性

@@ -26,6 +26,8 @@ enum Radius {
     static let sharp: CGFloat = 4
     /// 卡片、按鈕、大多數容器的預設值——夠柔和又不會過度可愛
     static let mid: CGFloat = 14
+    /// 少數當作視覺焦點的大卡片（如牌組列表的封面列），比一般卡片更圓一點
+    static let large: CGFloat = 20
     /// 短標籤、膠囊按鈕；長文字按鈕別用這個，兩端會擠出不自然的尖角
     static let pill: CGFloat = 999
 }

@@ -106,7 +106,7 @@ struct CardDetailContent: View {
 
     var body: some View {
         ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: Spacing.s16) {
                     if let positionLabel {
                         // 卡圖上方的空白處，既提示可滑動又不擋任何內容
                         HStack(spacing: 4) {
@@ -171,10 +171,10 @@ struct CardDetailContent: View {
     private var relationsSection: some View {
         let relations = database.relations(for: card)
         if !relations.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Spacing.s8) {
                 Text("關聯卡片").font(.caption).foregroundStyle(.secondary)
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 10) {
+                    HStack(alignment: .top, spacing: Spacing.s12) {
                         ForEach(relations) { relation in
                             NavigationLink(value: relation.card) {
                                 relationTile(relation)
@@ -185,9 +185,10 @@ struct CardDetailContent: View {
                     .padding(.vertical, 2)
                 }
             }
-            .padding(10)
+            .padding(Spacing.s12)
             .background(Color(.secondarySystemBackground),
-                        in: RoundedRectangle(cornerRadius: 8))
+                        in: RoundedRectangle(cornerRadius: Radius.mid))
+            .comfortShadow(.card)
         }
     }
 
@@ -246,8 +247,9 @@ struct CardDetailContent: View {
             .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
+        .padding(.vertical, Spacing.s8)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: Radius.mid))
+        .comfortShadow(.card)
     }
 
     private func stat(_ title: String, _ value: String) -> some View {
@@ -267,15 +269,16 @@ struct CardDetailContent: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(10)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
+        .padding(Spacing.s12)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: Radius.mid))
+        .comfortShadow(.card)
     }
 
     // MARK: - 我的收藏（實際擁有幾張）
 
     private var collectionControls: some View {
         let total = CollectionStore.owned(of: card, in: ownedIndex)
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: Spacing.s8) {
             HStack {
                 Label("我的收藏", systemImage: "shippingbox")
                     .font(.caption)
@@ -305,12 +308,13 @@ struct CardDetailContent: View {
                 .foregroundStyle(owned > 0 ? .primary : .secondary)
             }
         }
-        .padding(10)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
+        .padding(Spacing.s12)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: Radius.mid))
+        .comfortShadow(.card)
     }
 
     private func deckControls(_ deck: Deck) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.s8) {
             Text("加入「\(deck.name)」")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -336,8 +340,9 @@ struct CardDetailContent: View {
                     .foregroundStyle(total > DeckValidator.nameLimit ? .red : .secondary)
             }
         }
-        .padding(10)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
+        .padding(Spacing.s12)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: Radius.mid))
+        .comfortShadow(.card)
     }
 
     private func tag(_ text: String) -> some View {

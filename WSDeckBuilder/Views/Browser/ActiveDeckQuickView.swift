@@ -104,11 +104,11 @@ struct ActiveDeckQuickView: View {
 
     private var grid: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 8, pinnedViews: [.sectionHeaders]) {
+            LazyVStack(alignment: .leading, spacing: Spacing.s8, pinnedViews: [.sectionHeaders]) {
                 ForEach(sections, id: \.title) { section in
                     Section {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)],
-                                  spacing: 12) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: Spacing.s12)],
+                                  spacing: Spacing.s16) {
                             ForEach(printingTiles(for: section), id: \.printing.id) { tile in
                                 CardGridItemView(card: tile.card, deck: deck,
                                                  printing: tile.printing) {
@@ -127,7 +127,7 @@ struct ActiveDeckQuickView: View {
                     }
                 }
             }
-            .padding(.bottom, 8)
+            .padding(.bottom, Spacing.s8)
         }
     }
 

@@ -50,7 +50,7 @@ struct DeckDetailView: View {
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
-            .padding(.vertical, 6)
+            .padding(.vertical, Spacing.s8)
 
             switch mode {
             case .cards:
@@ -104,7 +104,7 @@ struct DeckDetailView: View {
     // MARK: - 規則驗證列（§4.4.3）
 
     private var validationHeader: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.s8) {
             ruleChip("\(validation.totalCount)/50", ok: validation.totalOK)
             ruleChip("CX \(validation.climaxCount)/8", ok: validation.climaxOK)
             if !validation.namesOK {
@@ -123,7 +123,7 @@ struct DeckDetailView: View {
             }
         }
         .padding(.horizontal)
-        .padding(.vertical, 9)
+        .padding(.vertical, Spacing.s8)
         .background {
             ZStack {
                 Color(.secondarySystemBackground)
@@ -162,11 +162,11 @@ struct DeckDetailView: View {
 
     private var cardGrid: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 8, pinnedViews: [.sectionHeaders]) {
+            LazyVStack(alignment: .leading, spacing: Spacing.s8, pinnedViews: [.sectionHeaders]) {
                 ForEach(sections, id: \.title) { section in
                     Section {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)],
-                                  spacing: 12) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: Spacing.s12)],
+                                  spacing: Spacing.s16) {
                             // 依刷版分格：1 SR + 3 R 就顯示 SR 與 R 各一格
                             ForEach(printingTiles(for: section), id: \.printing.id) { tile in
                                 CardGridItemView(card: tile.card, deck: deck,
@@ -204,7 +204,7 @@ struct DeckDetailView: View {
                     }
                 }
             }
-            .padding(.bottom, 8)
+            .padding(.bottom, Spacing.s8)
         }
         .overlay {
             if deck.entries.isEmpty {

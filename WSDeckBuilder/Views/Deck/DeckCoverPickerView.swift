@@ -41,8 +41,8 @@ struct DeckCoverPickerView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 12)],
-                          spacing: 14) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: Spacing.s12)],
+                          spacing: Spacing.s16) {
                     ForEach(tiles) { tile in
                         tileView(tile)
                     }
@@ -81,7 +81,7 @@ struct DeckCoverPickerView: View {
         }
         .font(.caption)
         .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(.vertical, Spacing.s8)
         .background(.bar)
     }
 
@@ -91,11 +91,12 @@ struct DeckCoverPickerView: View {
         return Button {
             setCover(tile.printing.id)
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: Spacing.s8) {
                 ZStack(alignment: .topTrailing) {
                     CardImageView(printing: tile.printing,
                                   cardName: tile.card.nameZH,
                                   landscape: tile.card.cardType == .climax)
+                        .comfortShadow(.card)
                         .overlay {
                             RoundedRectangle(cornerRadius: 6)
                                 .strokeBorder(isSelected ? Color.accentColor : .clear,

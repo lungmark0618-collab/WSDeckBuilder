@@ -15,7 +15,7 @@ struct FilterSheet: View {
                 if !lockedTitle {
                     Section("作品") {
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
+                            HStack(spacing: Spacing.s8) {
                                 titleChip(nil, label: "全部")
                                 ForEach(database.sets, id: \.titleCode) { meta in
                                     titleChip(meta.titleCode, label: meta.titleNameZH)
@@ -87,7 +87,7 @@ struct FilterSheet: View {
         } label: {
             Text(label)
                 .font(.callout)
-                .padding(.horizontal, 12)
+                .padding(.horizontal, Spacing.s12)
                 .padding(.vertical, 6)
                 .background(isOn ? Color.accentColor : Color(.tertiarySystemFill),
                             in: Capsule())
@@ -99,7 +99,7 @@ struct FilterSheet: View {
     /// 判定標誌 chips：顯示官方卡面圖示
     private var triggerToggleRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.s8) {
                 ForEach(TriggerIcon.allCases) { trigger in
                     let isOn = query.triggers.contains(trigger)
                     Button {
@@ -110,7 +110,7 @@ struct FilterSheet: View {
                         }
                     } label: {
                         TriggerIconView(trigger: trigger, size: 20)
-                            .padding(.horizontal, 12)
+                            .padding(.horizontal, Spacing.s12)
                             .padding(.vertical, 6)
                             .background(isOn ? Color.accentColor : Color(.tertiarySystemFill),
                                         in: Capsule())
@@ -128,7 +128,7 @@ struct FilterSheet: View {
                                         set: Binding<Set<T>>,
                                         label: @escaping (T) -> String) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.s8) {
                 ForEach(items, id: \.self) { item in
                     let isOn = set.wrappedValue.contains(item)
                     Button {
@@ -140,7 +140,7 @@ struct FilterSheet: View {
                     } label: {
                         Text(label(item))
                             .font(.callout)
-                            .padding(.horizontal, 12)
+                            .padding(.horizontal, Spacing.s12)
                             .padding(.vertical, 6)
                             .background(isOn ? Color.accentColor : Color(.tertiarySystemFill),
                                         in: Capsule())

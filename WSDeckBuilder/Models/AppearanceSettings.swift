@@ -230,6 +230,14 @@ enum TitlePalette {
         case "UMA":      Color(red: 0.25, green: 0.55, blue: 0.35)   // 賽馬娘：草綠
         case "BD/W125":  Color(red: 0.35, green: 0.45, blue: 0.75)   // MyGO：靛藍
         case "BD/W54":   Color(red: 0.95, green: 0.45, blue: 0.62)   // 少女樂團派對：粉紅
+        case "SPY":      Color(red: 0.29, green: 0.33, blue: 0.41)   // 間諜家家酒：石板灰
+        case "KGL":      Color(red: 0.83, green: 0.33, blue: 0.55)   // 輝夜姬：桃紅
+        case "TSK":      Color(red: 0.25, green: 0.66, blue: 0.63)   // 史萊姆：水藍綠
+        case "GIM":      Color(red: 0.90, green: 0.70, blue: 0.18)   // 學園偶像大師：鮮黃
+        case "OSK":      Color(red: 0.69, green: 0.25, blue: 0.66)   // 我推的孩子：星紫
+        case "PJS":      Color(red: 0.22, green: 0.77, blue: 0.73)   // 世界計畫：初音青（官方色 #39C5BB）
+        case "AZL":      Color(red: 0.12, green: 0.31, blue: 0.55)   // 碧藍航線：深海藍
+        case "LRC":      Color(red: 0.91, green: 0.33, blue: 0.42)   // 莉可麗絲：彼岸花紅
         default:         Color(red: 0.85, green: 0.35, blue: 0.60)
         }
     }

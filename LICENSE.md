@@ -1,5 +1,5 @@
 Required Notice: Copyright (c) 2026 lungmark0618-collab
-https://github.com/lungmark0618-collab/WSDeckBuilder
+https://github.com/lungmark0618-collab/WSDeckBuilder-ios
 
 # PolyForm Noncommercial License 1.0.0
 

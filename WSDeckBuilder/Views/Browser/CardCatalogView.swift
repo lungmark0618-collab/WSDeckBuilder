@@ -3,7 +3,7 @@ import SwiftUI
 
 /// 圖鑑這一層要看的東西
 enum CatalogRoute: Hashable {
-    /// 最上層：沒在找東西時顯示作品選單
+    /// 最上層：作品選單，這一層的搜尋列只篩作品，不搜卡片
     case root
     /// 鎖定單一作品
     case title(String)
@@ -48,9 +48,21 @@ struct CardCatalogView: View {
         return nil
     }
 
-    /// 只有最上層、而且使用者還沒開始找東西時才顯示作品選單
+    /// 只有最上層才顯示作品選單；在這一層打字是在篩選「作品」清單本身，
+    /// 不會像 .allCards／.title 那樣切去卡片結果——兩種搜尋刻意分開，
+    /// 選作品跟找卡片是兩件事，別讓打字把人直接彈出作品選單。
     private var showsGallery: Bool {
-        route == .root && query.keyword.isEmpty && !query.hasActiveFilters
+        route == .root && !query.hasActiveFilters
+    }
+
+    /// 作品選單這一層搜尋列篩的對象：作品本身，不是卡片。
+    /// 沿用 suggestions(for:) 同一套比對邏輯（含容錯）而不是另外寫一份，
+    /// 兩處「猜使用者想找哪個作品」的判斷才不會兜不起來。
+    private var gallerySets: [CardSetMeta] {
+        let trimmed = query.keyword.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return database.sets }
+        let matchedCodes = Set(database.suggestions(for: trimmed).map(\.titleCode))
+        return database.sets.filter { matchedCodes.contains($0.titleCode) }
     }
 
     private var activeDeck: Deck? {
@@ -79,7 +91,8 @@ struct CardCatalogView: View {
     var body: some View {
         Group {
             if showsGallery {
-                TitleGalleryView(sets: database.sets, totalCount: database.cards.count)
+                TitleGalleryView(sets: gallerySets, totalCount: database.cards.count,
+                                 isFiltering: !query.keyword.trimmingCharacters(in: .whitespaces).isEmpty)
             } else if usesGrid {
                 grid
             } else {
@@ -180,7 +193,11 @@ struct CardCatalogView: View {
     }
 
     private var searchPrompt: String {
-        pinnedTitle == nil ? "卡號、卡名、能力文字" : "在這部作品裡搜尋"
+        switch route {
+        case .root: "搜尋作品"
+        case .allCards: "卡號、卡名、能力文字"
+        case .title: "在這部作品裡搜尋"
+        }
     }
 
     // MARK: - 作用中的篩選（讓人知道結果為何被縮小，並能一鍵解除）

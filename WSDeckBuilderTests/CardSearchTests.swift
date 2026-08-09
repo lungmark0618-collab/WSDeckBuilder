@@ -59,6 +59,36 @@ final class CardSearchTests: XCTestCase {
                       "找到的是：\(results.map(\.id))")
     }
 
+    /// 只記得作品代號和末三碼也要找得到（不必背出中間的 /W91-）
+    func testLooseCardNumberSearch() {
+        let id = "HOL/W91-005"
+        for keyword in ["hol 005", "hol005", "HOL 5", "hol/w91-005", "005"] {
+            XCTAssertTrue(
+                SearchQuery.looselyMatchesCardNumber(query: keyword, cardID: id),
+                "「\(keyword)」應該要命中 \(id)")
+        }
+    }
+
+    /// 依序比對：段落順序對不上就不該命中，否則等於亂猜
+    func testLooseCardNumberRejectsWrongOrderAndMismatch() {
+        let id = "HOL/W91-005"
+        XCTAssertFalse(SearchQuery.looselyMatchesCardNumber(query: "005 hol", cardID: id))
+        XCTAssertFalse(SearchQuery.looselyMatchesCardNumber(query: "hol 006", cardID: id))
+        XCTAssertFalse(SearchQuery.looselyMatchesCardNumber(query: "brd 005", cardID: id))
+        // 純文字沒有數字段，交給全文搜尋而不是卡號比對
+        XCTAssertFalse(SearchQuery.looselyMatchesCardNumber(query: "hol", cardID: id))
+    }
+
+    /// 實際跑一次搜尋，確認寬鬆卡號真的接進 search()
+    func testLooseCardNumberSearchInDatabase() {
+        var query = SearchQuery()
+        query.titleCode = "BRD/W139"
+        query.keyword = "brd 075"
+        let results = database.search(query)
+        XCTAssertTrue(results.contains { $0.id == "BRD/W139-075" },
+                      "找到的是：\(results.map(\.id))")
+    }
+
     func testChineseNameSearch() {
         var query = SearchQuery()
         query.keyword = "泰蕾莎"

@@ -283,7 +283,10 @@ final class CardDatabase {
             let normalized = SearchQuery.normalizeCardNumber(keyword)
             if !normalized.isEmpty,
                card.printings.contains(where: {
+                   // 先比連續字串（打完整卡號、或只打 w139075 這種），
+                   // 不中再走寬鬆比對（「hol 005」這種只記得頭尾的打法）
                    SearchQuery.normalizeCardNumber($0.id).contains(normalized)
+                       || SearchQuery.looselyMatchesCardNumber(query: keyword, cardID: $0.id)
                }) { return true }
             // searchBlob 是載入時就算好的小寫全文；這裡再 lowercased() 等於
             // 每按一次鍵就把整個資料庫的卡名與能力文字重新配置一遍
